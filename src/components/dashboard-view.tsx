@@ -13,7 +13,7 @@ import {
 } from "@/components/month-setup";
 import { PAYMENT_METHOD_LABELS, TRANSACTION_TYPE_LABELS } from "@/lib/constants";
 import { formatINR } from "@/lib/finance/money";
-import { formatDayLabel } from "@/lib/finance/dates";
+import { formatDayLabel, todayISO } from "@/lib/finance/dates";
 import type { Income, MonthPlanSummary } from "@/lib/finance/month-plan";
 import type { Account, Category, Transaction } from "@/lib/types";
 import { categoryById } from "@/lib/finance/classify";
@@ -25,6 +25,7 @@ export function DashboardView({
   weeklyTarget,
   weeklySpent,
   weekBars,
+  salaryDate,
   recent,
   accounts,
   categories,
@@ -36,17 +37,21 @@ export function DashboardView({
   plan: MonthPlanSummary;
   weeklyTarget: number;
   weeklySpent: number;
-  weekBars: { start: string; spent: number; target: number }[];
+  weekBars: { start: string; end: string; spent: number; target: number }[];
+  salaryDate: string | null;
   recent: Transaction[];
   accounts: Account[];
   categories: Category[];
   incomes: Income[];
   defaultSalary: number;
 }) {
-  const weeklyLeft = Math.max(0, weeklyTarget - weeklySpent);
-  const needsIncome = incomes.length === 0;
+  const today = todayISO(new Date());
+  const currentBar = weekBars.find((week) => today >= week.start && today <= week.end);
+  const currentTarget = currentBar?.target ?? weeklyTarget;
+  const weeklyLeft = Math.max(0, currentTarget - weeklySpent);
+  const needsIncome = !salaryDate;
   const weeklyPercent =
-    weeklyTarget > 0 ? Math.min(100, Math.round((weeklySpent / weeklyTarget) * 100)) : 0;
+    currentTarget > 0 ? Math.min(100, Math.round((weeklySpent / currentTarget) * 100)) : 0;
 
   return (
     <div className="flex flex-col gap-4 md:gap-5">
@@ -87,9 +92,9 @@ export function DashboardView({
       </Card>
 
       {needsIncome ? <AddIncomeCard month={month} defaultSalary={defaultSalary} /> : null}
+      {incomes.length > 0 ? <IncomeChips incomes={incomes} /> : null}
       {!needsIncome ? (
         <div className="flex flex-wrap items-center gap-2">
-          <IncomeChips incomes={incomes} />
           <AddIncomeCard month={month} defaultSalary={defaultSalary} collapsed />
         </div>
       ) : null}
@@ -128,7 +133,11 @@ export function DashboardView({
           <CardHeader>
             <CardTitle>This week</CardTitle>
           </CardHeader>
-          {weeklyTarget > 0 ? (
+          {!salaryDate ? (
+            <p className="mb-3 text-sm text-muted">
+              Add this month’s salary above. Weeks start from that day, then every 7 days until month-end.
+            </p>
+          ) : weeklyTarget > 0 ? (
             <div className="mb-3">
               <div className="mb-1 flex items-center justify-between text-sm">
                 <span className="text-muted">
@@ -136,6 +145,7 @@ export function DashboardView({
                 </span>
                 <span className="font-medium">{weeklyPercent}%</span>
               </div>
+              <p className="mb-1 text-xs text-muted">Started {formatDayLabel(salaryDate)}</p>
               <div className="h-2.5 overflow-hidden rounded-full bg-[#efe8de]">
                 <div
                   className="h-full rounded-full bg-accent"
@@ -145,7 +155,7 @@ export function DashboardView({
             </div>
           ) : (
             <div className="mb-3 space-y-2">
-              <p className="text-sm text-muted">Set a weekly target so the bars have a line to beat.</p>
+              <p className="text-sm text-muted">Set a weekly target. Counting already starts from {formatDayLabel(salaryDate)}.</p>
               <WeeklyTargetField month={month} weeklyTarget={weeklyTarget} />
             </div>
           )}

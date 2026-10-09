@@ -12,7 +12,7 @@ import {
   countsAsPersonalSpending,
 } from "@/lib/finance/classify";
 import { computeWeeklyAvailability } from "@/lib/finance/weekly";
-import { monthRange, weekRange, type WeekStartDay } from "@/lib/finance/dates";
+import { monthRange, paydayWeekContaining, weekRange, type WeekStartDay } from "@/lib/finance/dates";
 
 export type CategorySpend = {
   categoryId: string;
@@ -126,9 +126,15 @@ export function summarizeDashboard(input: {
   categories: Category[];
   today: string;
   weekStartsOn: WeekStartDay;
+  cycleStart?: string | null;
 }): DashboardSummary {
   const month = monthRange(input.budget.year_month);
-  const week = weekRange(input.today, input.weekStartsOn);
+  const week = input.cycleStart
+    ? paydayWeekContaining(input.today, input.cycleStart, month.end) ?? {
+        start: input.today,
+        end: input.today,
+      }
+    : weekRange(input.today, input.weekStartsOn);
   const monthTransactions = input.transactions.filter((transaction) =>
     inRange(transaction.occurred_on, month.start, month.end),
   );

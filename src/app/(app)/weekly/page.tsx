@@ -1,12 +1,12 @@
 import { Suspense } from "react";
-import { shiftWeek, WeeklyView } from "@/components/weekly-view";
+import { WeeklyView } from "@/components/weekly-view";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   currentYearMonth,
   ensureMonthBudget,
   getAccounts,
   getCategories,
-  getProfile,
+  getIncomes,
   getTransactionsInRange,
 } from "@/lib/data";
 import { isSupabaseConfigured } from "@/lib/env";
@@ -15,8 +15,18 @@ import {
   computeWeeklyAvailability,
   dailyPersonalSpending,
   personalSpentInRange,
+  weekTarget,
 } from "@/lib/finance/weekly";
-import { monthRange, todayISO, weekRange, type WeekStartDay } from "@/lib/finance/dates";
+import {
+  addMonths,
+  adjacentPaydayWeek,
+  firstSalaryDate,
+  monthRange,
+  paydayWeekContaining,
+  paydayWeeks,
+  todayISO,
+  toYearMonth,
+} from "@/lib/finance/dates";
 import { summarizeMonthPlan } from "@/lib/finance/month-plan";
 import { requestNow } from "@/lib/request-now";
 
@@ -43,16 +53,57 @@ async function Weekly({
   const params = await searchParams;
   const now = await requestNow();
   const today = todayISO(now);
-  const profile = await getProfile();
-  const weekStartsOn = profile.week_start_day as WeekStartDay;
-  const week = weekRange(params.week ?? today, weekStartsOn);
-  const month = currentYearMonth(now);
-  const [{ budget, envelopes, incomes }, accounts, categories] = await Promise.all([
+  const month = params.week ? toYearMonth(params.week) : currentYearMonth(now);
+  const [{ budget, envelopes, incomes }, accounts, categories, previousIncomes, nextIncomes] = await Promise.all([
     ensureMonthBudget(month),
     getAccounts(),
     getCategories(),
+    getIncomes(addMonths(month, -1)),
+    getIncomes(addMonths(month, 1)),
   ]);
   const monthDates = monthRange(month);
+  const salaryDate = firstSalaryDate(incomes);
+  const weeks = salaryDate ? paydayWeeks(salaryDate, monthDates.end) : [];
+  const requested = params.week ?? today;
+  const week =
+    (salaryDate ? paydayWeekContaining(requested, salaryDate, monthDates.end) : null) ?? weeks[0] ?? null;
+
+  function cycleStartForMonth(yearMonth: string): string | null {
+    if (yearMonth === month) return salaryDate;
+    if (yearMonth === addMonths(month, -1)) return firstSalaryDate(previousIncomes);
+    if (yearMonth === addMonths(month, 1)) return firstSalaryDate(nextIncomes);
+    return null;
+  }
+
+  const prev = week ? adjacentPaydayWeek(week, -1, cycleStartForMonth) : null;
+  const next = week ? adjacentPaydayWeek(week, 1, cycleStartForMonth) : null;
+
+  if (!week) {
+    return (
+      <WeeklyView
+        start={monthDates.start}
+        end={monthDates.end}
+        availability={computeWeeklyAvailability({
+          weeklyTarget: 0,
+          spentThisWeek: 0,
+          personalLimit: 0,
+          monthToDatePersonal: 0,
+          today,
+          weekEnd: monthDates.end,
+          monthEnd: monthDates.end,
+        })}
+        daily={[]}
+        transactions={[]}
+        categories={categories}
+        accounts={accounts}
+        categoryTotals={[]}
+        prevStart={null}
+        nextStart={null}
+        salaryDate={null}
+      />
+    );
+  }
+
   const transactions = await getTransactionsInRange(
     week.start < monthDates.start ? week.start : monthDates.start,
     week.end > monthDates.end ? week.end : monthDates.end,
@@ -69,7 +120,7 @@ async function Weekly({
   });
   const spentThisWeek = personalSpentInRange(transactions, categories, week.start, week.end);
   const availability = computeWeeklyAvailability({
-    weeklyTarget: budget.weekly_target,
+    weeklyTarget: weekTarget(budget.weekly_target, week.start, week.end),
     spentThisWeek,
     personalLimit: plan.available,
     monthToDatePersonal: plan.expenses,
@@ -95,8 +146,9 @@ async function Weekly({
       categories={categories}
       accounts={accounts}
       categoryTotals={categoryTotals}
-      prevStart={shiftWeek(week.start, -1)}
-      nextStart={shiftWeek(week.start, 1)}
+      prevStart={prev?.start ?? null}
+      nextStart={next?.start ?? null}
+      salaryDate={salaryDate}
     />
   );
 }

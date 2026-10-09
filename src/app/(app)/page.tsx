@@ -13,9 +13,9 @@ import {
   lookbackStart,
 } from "@/lib/data";
 import { isSupabaseConfigured } from "@/lib/env";
-import { greetingForHour, monthRange, todayISO, type WeekStartDay } from "@/lib/finance/dates";
+import { firstSalaryDate, greetingForHour, monthRange, paydayWeekContaining, paydayWeeks, todayISO } from "@/lib/finance/dates";
 import { summarizeMonthPlan } from "@/lib/finance/month-plan";
-import { recentWeeks, weekSummaries } from "@/lib/finance/weekly";
+import { weekSummaries } from "@/lib/finance/weekly";
 import { requestNow } from "@/lib/request-now";
 
 export default function HomePage({
@@ -44,7 +44,6 @@ async function Dashboard({
 
   const today = todayISO(now);
   const profile = await getProfile();
-  const weekStartsOn = profile.week_start_day as WeekStartDay;
   const [schemaReady, { budget, envelopes, incomes }, accounts, categories, recent] = await Promise.all([
     isMonthPlanSchemaReady(),
     ensureMonthBudget(month),
@@ -64,8 +63,13 @@ async function Dashboard({
     transactions: monthTransactions,
     categories,
   });
-  const weeks = recentWeeks(today, weekStartsOn, 6);
+  const salaryDate = firstSalaryDate(incomes);
+  const weeks = salaryDate ? paydayWeeks(salaryDate, range.end) : [];
   const weekBars = weekSummaries(transactions, categories, budget, weeks);
+  const currentWeek = salaryDate ? paydayWeekContaining(today, salaryDate, range.end) : null;
+  const weeklySpent = currentWeek
+    ? (weekBars.find((week) => week.start === currentWeek.start)?.spent ?? 0)
+    : 0;
 
   return (
     <>
@@ -80,8 +84,9 @@ async function Dashboard({
       greeting={greetingForHour(now.getHours())}
       plan={plan}
       weeklyTarget={budget.weekly_target}
-      weeklySpent={weekBars.at(-1)?.spent ?? 0}
+      weeklySpent={weeklySpent}
       weekBars={weekBars}
+      salaryDate={salaryDate}
       recent={recent}
       accounts={accounts}
       categories={categories}

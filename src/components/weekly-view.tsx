@@ -5,7 +5,7 @@ import { DailyBarChart } from "@/components/charts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatINR } from "@/lib/finance/money";
-import { addDays, formatDayLabel, formatWeekRangeLabel, toISODate } from "@/lib/finance/dates";
+import { formatDayLabel, formatWeekRangeLabel } from "@/lib/finance/dates";
 import { categoryById } from "@/lib/finance/classify";
 import type { WeeklyAvailability } from "@/lib/finance/weekly";
 import type { Account, Category, Transaction } from "@/lib/types";
@@ -22,6 +22,7 @@ export function WeeklyView({
   categoryTotals,
   prevStart,
   nextStart,
+  salaryDate,
 }: {
   start: string;
   end: string;
@@ -31,8 +32,9 @@ export function WeeklyView({
   categories: Category[];
   accounts: Account[];
   categoryTotals: { name: string; amount: number }[];
-  prevStart: string;
-  nextStart: string;
+  prevStart: string | null;
+  nextStart: string | null;
+  salaryDate: string | null;
 }) {
   const kept = Math.max(0, availability.remainingVsWeeklyTarget);
   const target = Math.max(availability.weeklyTarget, 1);
@@ -47,12 +49,24 @@ export function WeeklyView({
           <p className="text-sm text-muted">{formatWeekRangeLabel(start, end)}</p>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:flex">
-          <Button asChild variant="secondary" className="w-full sm:w-auto">
-            <Link href={`/weekly?week=${prevStart}`}>Previous</Link>
-          </Button>
-          <Button asChild variant="secondary" className="w-full sm:w-auto">
-            <Link href={`/weekly?week=${nextStart}`}>Next</Link>
-          </Button>
+          {prevStart ? (
+            <Button asChild variant="secondary" className="w-full sm:w-auto">
+              <Link href={`/weekly?week=${prevStart}`}>Previous</Link>
+            </Button>
+          ) : (
+            <Button variant="secondary" className="w-full sm:w-auto" disabled>
+              Previous
+            </Button>
+          )}
+          {nextStart ? (
+            <Button asChild variant="secondary" className="w-full sm:w-auto">
+              <Link href={`/weekly?week=${nextStart}`}>Next</Link>
+            </Button>
+          ) : (
+            <Button variant="secondary" className="w-full sm:w-auto" disabled>
+              Next
+            </Button>
+          )}
         </div>
       </div>
 
@@ -80,6 +94,11 @@ export function WeeklyView({
               {formatINR(availability.spentThisWeek)} spent
               {availability.weeklyTarget > 0 ? ` of ${formatINR(availability.weeklyTarget)}` : ". Set a weekly target on Home."}
             </p>
+            {salaryDate ? (
+              <p className="mt-1 text-xs text-muted">Week 1 started {formatDayLabel(salaryDate)}</p>
+            ) : (
+              <p className="mt-1 text-xs text-muted">Log this month’s salary on Home to start weekly counting.</p>
+            )}
           </div>
         </div>
         <p className="mt-4 text-sm text-muted">
@@ -162,8 +181,4 @@ export function WeeklyView({
       </Card>
     </div>
   );
-}
-
-export function shiftWeek(start: string, weeks: number): string {
-  return toISODate(addDays(start, weeks * 7));
 }

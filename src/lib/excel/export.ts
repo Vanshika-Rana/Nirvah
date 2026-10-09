@@ -8,16 +8,15 @@ import type {
   Transaction,
 } from "@/lib/types";
 import {
+  firstSalaryDate,
   formatMonthLabel,
   monthRange,
-  startOfWeek,
+  paydayWeeks,
   toISODate,
-  toYearMonth,
   type WeekStartDay,
 } from "@/lib/finance/dates";
 import { summarizeDashboard } from "@/lib/finance/summarize";
-import { weekRange } from "@/lib/finance/dates";
-import { personalSpentInRange } from "@/lib/finance/weekly";
+import { personalSpentInRange, weekTarget } from "@/lib/finance/weekly";
 import { PAYMENT_METHOD_LABELS, TRANSACTION_TYPE_LABELS } from "@/lib/constants";
 import { categoryById } from "@/lib/finance/classify";
 
@@ -96,13 +95,16 @@ export function buildWorkbook(payload: ExportPayload): XLSX.WorkBook {
   ];
 
   const monthlySummary = payload.budgets.map((budget) => {
-    const month = monthRange(budget.year_month.slice(0, 7));
+    const monthKey = budget.year_month.slice(0, 7);
+    const month = monthRange(monthKey);
+    const monthIncomes = (payload.incomes ?? []).filter((row) => row.year_month.slice(0, 7) === monthKey);
     const summary = summarizeDashboard({
-      budget: { ...budget, year_month: budget.year_month.slice(0, 7) },
+      budget: { ...budget, year_month: monthKey },
       transactions: payload.transactions,
       categories: payload.categories,
       today: month.end,
       weekStartsOn,
+      cycleStart: firstSalaryDate(monthIncomes),
     });
     return {
       month: formatMonthLabel(budget.year_month.slice(0, 7)),
@@ -121,43 +123,34 @@ export function buildWorkbook(payload: ExportPayload): XLSX.WorkBook {
     };
   });
 
-  const weekKeys = new Set<string>();
   const weeklySummary: {
     week_start: string;
     week_end: string;
     personal_spent: number;
     weekly_target: number;
   }[] = [];
-
-  const sorted = [...payload.transactions].sort((a, b) =>
-    a.occurred_on.localeCompare(b.occurred_on),
-  );
-  if (sorted.length > 0) {
-    let cursor = startOfWeek(sorted[0].occurred_on, weekStartsOn);
-    const last = startOfWeek(sorted[sorted.length - 1].occurred_on, weekStartsOn);
-    while (cursor <= last) {
-      const range = weekRange(cursor, weekStartsOn);
-      const key = range.start;
-      if (!weekKeys.has(key)) {
-        weekKeys.add(key);
-        const monthKey = toYearMonth(range.start);
-        const budget =
-          payload.budgets.find((item) => item.year_month.slice(0, 7) === monthKey) ??
-          payload.budgets[0];
-        weeklySummary.push({
-          week_start: range.start,
-          week_end: range.end,
-          personal_spent: personalSpentInRange(
-            payload.transactions,
-            payload.categories,
-            range.start,
-            range.end,
-          ),
-          weekly_target: Number(budget?.weekly_target ?? 8000),
-        });
-      }
-      cursor = new Date(cursor);
-      cursor.setDate(cursor.getDate() + 7);
+  const monthKeys = new Set([
+    ...payload.budgets.map((budget) => budget.year_month.slice(0, 7)),
+    ...(payload.incomes ?? []).map((row) => row.year_month.slice(0, 7)),
+  ]);
+  for (const monthKey of [...monthKeys].sort()) {
+    const monthIncomes = (payload.incomes ?? []).filter((row) => row.year_month.slice(0, 7) === monthKey);
+    const salaryDate = firstSalaryDate(monthIncomes);
+    if (!salaryDate) continue;
+    const month = monthRange(monthKey);
+    const budget = payload.budgets.find((item) => item.year_month.slice(0, 7) === monthKey);
+    for (const week of paydayWeeks(salaryDate, month.end)) {
+      weeklySummary.push({
+        week_start: week.start,
+        week_end: week.end,
+        personal_spent: personalSpentInRange(
+          payload.transactions,
+          payload.categories,
+          week.start,
+          week.end,
+        ),
+        weekly_target: weekTarget(Number(budget?.weekly_target ?? 0), week.start, week.end),
+      });
     }
   }
 

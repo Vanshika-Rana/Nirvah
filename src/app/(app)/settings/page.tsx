@@ -60,7 +60,6 @@ async function Settings({
         budget={budget}
         envelopes={envelopes}
         accounts={accounts}
-        weekStartDay={profile.week_start_day}
         defaultSalary={profile.default_salary}
       />
     </div>

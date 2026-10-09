@@ -6,8 +6,6 @@ import {
   eachDay,
   minISODate,
   monthRange,
-  weekRange,
-  type WeekStartDay,
 } from "@/lib/finance/dates";
 
 export type WeeklyAvailability = {
@@ -87,6 +85,12 @@ export function computeWeeklyAvailability(input: {
   };
 }
 
+export function weekTarget(weeklyTarget: number, start: string, end: string): number {
+  const days = diffDays(start, end) + 1;
+  if (days >= 7) return roundMoney(weeklyTarget);
+  return roundMoney((weeklyTarget * days) / 7);
+}
+
 export function weekSummaries(
   transactions: Pick<Transaction, "type" | "amount" | "category_id" | "occurred_on">[],
   categories: Pick<Category, "id" | "bucket" | "kind">[],
@@ -96,28 +100,8 @@ export function weekSummaries(
   return weeks.map((week) => ({
     ...week,
     spent: personalSpentInRange(transactions, categories, week.start, week.end),
-    target: budget.weekly_target,
+    target: weekTarget(budget.weekly_target, week.start, week.end),
   }));
-}
-
-export function recentWeeks(
-  today: string,
-  weekStartsOn: WeekStartDay,
-  count: number,
-): { start: string; end: string }[] {
-  const current = weekRange(today, weekStartsOn);
-  const weeks: { start: string; end: string }[] = [];
-  const startDate = new Date(
-    Number(current.start.slice(0, 4)),
-    Number(current.start.slice(5, 7)) - 1,
-    Number(current.start.slice(8, 10)),
-  );
-  for (let i = count - 1; i >= 0; i -= 1) {
-    const cursor = new Date(startDate);
-    cursor.setDate(startDate.getDate() - i * 7);
-    weeks.push(weekRange(cursor, weekStartsOn));
-  }
-  return weeks;
 }
 
 export function monthToDatePersonalSpending(

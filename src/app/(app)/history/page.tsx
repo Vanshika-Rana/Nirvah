@@ -2,9 +2,9 @@ import { Suspense } from "react";
 import { HistoryClient } from "@/components/history-client";
 import { MonthSelector } from "@/components/month-selector";
 import { Skeleton } from "@/components/ui/skeleton";
-import { currentYearMonth, getAccounts, getCategories, getHistory, getProfile } from "@/lib/data";
+import { currentYearMonth, getAccounts, getCategories, getHistory, getIncomes } from "@/lib/data";
 import { isSupabaseConfigured } from "@/lib/env";
-import { weekRange, type WeekStartDay } from "@/lib/finance/dates";
+import { firstSalaryDate, monthRange, paydayWeekContaining, toYearMonth } from "@/lib/finance/dates";
 import { requestNow } from "@/lib/request-now";
 
 export default function HistoryPage({
@@ -28,14 +28,22 @@ async function History({
     return <p className="text-sm text-muted">Configure Supabase to load history.</p>;
   }
   const params = await searchParams;
-  const month = params.month ?? currentYearMonth(await requestNow());
-  const profile = await getProfile();
-  const week = params.week ? weekRange(params.week, profile.week_start_day as WeekStartDay) : null;
+  const month = params.month ?? (params.week ? toYearMonth(params.week) : currentYearMonth(await requestNow()));
+  const weekMonth = params.week ? toYearMonth(params.week) : month;
+  const incomes = params.week ? await getIncomes(weekMonth) : [];
+  const salaryDate = firstSalaryDate(incomes);
+  const monthDates = monthRange(weekMonth);
+  const week =
+    params.week && salaryDate
+      ? paydayWeekContaining(params.week, salaryDate, monthDates.end)
+      : params.week
+        ? { start: params.week, end: params.week }
+        : null;
   const [accounts, categories, history] = await Promise.all([
     getAccounts(),
     getCategories(),
     getHistory({
-      month: params.week ? undefined : month,
+      month: week ? undefined : month,
       weekStart: week?.start,
       weekEnd: week?.end,
       categoryId: params.category,

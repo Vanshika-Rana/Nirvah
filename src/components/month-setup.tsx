@@ -9,7 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field, Input, NativeSelect } from "@/components/ui/input";
 import { ENVELOPE_KIND_LABELS, type EnvelopeKind, type Income } from "@/lib/finance/month-plan";
+import { formatDayLabel, todayISO } from "@/lib/finance/dates";
 import { formatINR } from "@/lib/finance/money";
+
+function defaultIncomeDate(month: string): string {
+  const today = todayISO(new Date());
+  return today.startsWith(month) ? today : `${month}-01`;
+}
 
 export function AddIncomeCard({
   month,
@@ -25,6 +31,7 @@ export function AddIncomeCard({
   const [open, setOpen] = useState(!collapsed);
   const [amount, setAmount] = useState(defaultSalary > 0 ? String(defaultSalary) : "");
   const [label, setLabel] = useState("Salary");
+  const [occurredOn, setOccurredOn] = useState(() => defaultIncomeDate(month));
 
   function save(nextAmount: number, nextLabel: string, isSalary: boolean) {
     startTransition(async () => {
@@ -33,7 +40,7 @@ export function AddIncomeCard({
         amount: nextAmount,
         label: nextLabel || "Income",
         isSalary,
-        occurredOn: `${month}-01`,
+        occurredOn,
       });
       if (!result.ok) toast.error(result.error);
       else {
@@ -58,7 +65,7 @@ export function AddIncomeCard({
       <div>
         <h2 className="text-base font-semibold">Money received this month</h2>
         <p className="text-sm text-muted">
-          Add salary or extra money. Leftover from last month is already included above.
+          Add salary on the day it arrived. Weeks start from that date. Extra money does not move week 1.
         </p>
       </div>
       {defaultSalary > 0 ? (
@@ -66,12 +73,15 @@ export function AddIncomeCard({
           {pending ? "Saving…" : `Add salary ${formatINR(defaultSalary)}`}
         </Button>
       ) : null}
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-3">
         <Field label="Amount">
           <Input inputMode="decimal" value={amount} placeholder="0" onChange={(event) => setAmount(event.target.value)} />
         </Field>
         <Field label="What is this?">
           <Input value={label} onChange={(event) => setLabel(event.target.value)} />
+        </Field>
+        <Field label="Date received">
+          <Input type="date" value={occurredOn} onChange={(event) => setOccurredOn(event.target.value)} />
         </Field>
       </div>
       <div className="flex gap-2">
@@ -101,6 +111,7 @@ export function IncomeChips({ incomes }: { incomes: Income[] }) {
         <li key={row.id} className="flex items-center gap-1 rounded-full bg-[#efe8de] pl-3 pr-1 py-1 text-xs">
           <span>
             {row.label}: {formatINR(row.amount)}
+            {row.is_salary ? ` · ${formatDayLabel(row.occurred_on)}` : ""}
           </span>
           <button
             type="button"

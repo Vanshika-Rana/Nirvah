@@ -3,6 +3,7 @@
 import { fail, withAction, type ActionResult } from "@/lib/action-result";
 import { getAuthContext } from "@/lib/data";
 import { ENVELOPE_KINDS, type EnvelopeKind } from "@/lib/finance/month-plan";
+import { isISODate } from "@/lib/finance/dates";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -30,10 +31,13 @@ export async function addIncome(input: {
       amount: money,
       label: z.string().trim().min(1).max(80),
       isSalary: z.boolean().optional(),
-      occurredOn: z.string(),
+      occurredOn: z.string().refine(isISODate, "Pick a valid date."),
     })
     .safeParse(input);
   if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Check the income.");
+  if (!parsed.data.occurredOn.startsWith(parsed.data.yearMonth)) {
+    return fail("Pick a date in this month. Weeks start from the salary date.");
+  }
   return withAction(async () => {
     const { supabase, user } = await getAuthContext();
     const { data, error } = await supabase
