@@ -2,13 +2,14 @@ import { Suspense } from "react";
 import { HistoryClient } from "@/components/history-client";
 import { MonthSelector } from "@/components/month-selector";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getAccounts, getCategories, getHistory, getSalaryIncomes } from "@/lib/data";
+import { getAccounts, getCategories, getHistory, getProfile, getSalaryIncomes } from "@/lib/data";
 import { isSupabaseConfigured } from "@/lib/env";
 import {
   currentCycleMonth,
   cycleHorizon,
   cycleSpendEnd,
   maxISODate,
+  monthRange,
   payCycleForDate,
   payCycleForMonth,
   paydayWeekContaining,
@@ -16,6 +17,7 @@ import {
   todayISO,
   toYearMonth,
 } from "@/lib/finance/dates";
+import type { CategoryBucket } from "@/lib/types";
 import { requestNow } from "@/lib/request-now";
 
 export default function HistoryPage({
@@ -41,11 +43,12 @@ async function History({
   const params = await searchParams;
   const now = await requestNow();
   const today = todayISO(now);
-  const salaries = await getSalaryIncomes();
+  const [salaries, profile] = await Promise.all([getSalaryIncomes(), getProfile()]);
   const dates = salaryDates(salaries);
-  const weekCycle = params.week ? payCycleForDate(dates, params.week) : null;
-  const month = params.month ?? (weekCycle ? toYearMonth(weekCycle.start) : currentCycleMonth(dates, today));
-  const cycle = weekCycle ?? payCycleForMonth(dates, month);
+  const ledger = profile.tracker_mode === "ledger";
+  const weekCycle = !ledger && params.week ? payCycleForDate(dates, params.week) : null;
+  const month = params.month ?? (weekCycle ? toYearMonth(weekCycle.start) : ledger ? today.slice(0, 7) : currentCycleMonth(dates, today));
+  const cycle = ledger ? null : weekCycle ?? payCycleForMonth(dates, month);
   const lastDay = cycle ? maxISODate(cycleHorizon(cycle, today), cycleHorizon(cycle, params.week ?? today)) : null;
   const week =
     params.week && cycle && lastDay
@@ -53,9 +56,12 @@ async function History({
       : params.week
         ? { start: params.week, end: params.week }
         : null;
-  const range = cycle
-    ? { start: cycle.start, end: cycleSpendEnd(cycle, today) }
-    : null;
+  const range = ledger
+    ? monthRange(month)
+    : cycle
+      ? { start: cycle.start, end: cycleSpendEnd(cycle, today) }
+      : null;
+  const bucket = params.scope === "personal" || params.scope === "business" ? (params.scope as CategoryBucket) : undefined;
   const [accounts, categories, history] = await Promise.all([
     getAccounts(),
     getCategories(),
@@ -68,6 +74,7 @@ async function History({
       categoryId: params.category,
       accountId: params.account,
       type: params.type,
+      bucket,
       query: params.q,
       page: Number(params.page ?? "1"),
     }),
@@ -79,7 +86,7 @@ async function History({
         <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">History</h1>
         <p className="text-sm text-muted">Edit a row if you made a mistake.</p>
       </div>
-      <MonthSelector month={month} path="/history" salaryDates={dates} />
+      <MonthSelector month={month} path="/history" salaryDates={ledger ? [] : dates} />
       <HistoryClient
         transactions={history.transactions}
         accounts={accounts}
@@ -87,6 +94,7 @@ async function History({
         total={history.total}
         page={history.page}
         pageSize={history.pageSize}
+        ledger={ledger}
       />
     </div>
   );

@@ -19,6 +19,7 @@ export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 export const CATEGORY_BUCKETS = [
   "personal",
   "family",
+  "business",
   "home_loan",
   "credit_card_bill",
   "sip",
@@ -102,10 +103,14 @@ export type Transaction = {
   updated_at: string;
 };
 
+export const TRACKER_MODES = ["envelopes", "ledger"] as const;
+export type TrackerMode = (typeof TRACKER_MODES)[number];
+
 export type Profile = {
   id: string;
   week_start_day: number;
   default_salary: number;
+  tracker_mode: TrackerMode | null;
   created_at: string;
   updated_at: string;
 };

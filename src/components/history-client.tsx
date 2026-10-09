@@ -17,6 +17,7 @@ export function HistoryClient({
   total,
   page,
   pageSize,
+  ledger = false,
 }: {
   transactions: Transaction[];
   accounts: Account[];
@@ -24,6 +25,7 @@ export function HistoryClient({
   total: number;
   page: number;
   pageSize: number;
+  ledger?: boolean;
 }) {
   const router = useRouter();
   const params = useSearchParams();
@@ -73,6 +75,13 @@ export function HistoryClient({
             </option>
           ))}
         </NativeSelect>
+        {ledger ? (
+          <NativeSelect value={params.get("scope") ?? ""} onChange={(event) => setFilter("scope", event.target.value)}>
+            <option value="">Personal and business</option>
+            <option value="personal">Personal</option>
+            <option value="business">Business</option>
+          </NativeSelect>
+        ) : null}
       </div>
 
       {transactions.length === 0 ? (

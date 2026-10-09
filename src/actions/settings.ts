@@ -1,9 +1,12 @@
 "use server";
 
 import { fail, withAction, type ActionResult } from "@/lib/action-result";
-import { getAuthContext } from "@/lib/data";
+import { getAuthContext, getCategories } from "@/lib/data";
+import { LEDGER_STARTER_CATEGORIES } from "@/lib/finance/ledger";
+import { TRACKER_MODES, type TrackerMode } from "@/lib/types";
 import { accountSchema, categorySchema, profileSchema } from "@/lib/validation/budget";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
 function refresh() {
   revalidatePath("/");
@@ -122,4 +125,68 @@ export async function setCategoryActive(
     refresh();
     return { id };
   }, "Could not update the category.");
+}
+
+export async function chooseTrackerMode(mode: TrackerMode): Promise<ActionResult<{ tracker_mode: TrackerMode }>> {
+  const parsed = z.enum(TRACKER_MODES).safeParse(mode);
+  if (!parsed.success) return fail("Choose how you want to use Nirvah.");
+  return withAction(async () => {
+    const { supabase, user } = await getAuthContext();
+    if (parsed.data === "ledger") {
+      const existing = await getCategories();
+      if (existing.length === 0) {
+        const seeded = await supabase.from("categories").insert(
+          LEDGER_STARTER_CATEGORIES.map((row) => ({
+            user_id: user.id,
+            name: row.name,
+            bucket: row.bucket,
+            kind: row.bucket === "income" ? "spend" : "spend",
+            sort_order: row.sort_order,
+            is_active: true,
+          })),
+        );
+        if (seeded.error) throw seeded.error;
+      }
+    }
+    const { error } = await supabase
+      .from("profiles")
+      .update({ tracker_mode: parsed.data })
+      .eq("id", user.id);
+    if (error) throw error;
+    refresh();
+    revalidatePath("/weekly");
+    return { tracker_mode: parsed.data };
+  }, "Could not save how you use Nirvah.");
+}
+
+export async function resetAccount(confirmation: string): Promise<ActionResult<{ reset: true }>> {
+  if (confirmation.trim().toUpperCase() !== "RESET") {
+    return fail("Type RESET to confirm.");
+  }
+  return withAction(async () => {
+    const { supabase, user } = await getAuthContext();
+    const tables = [
+      "transactions",
+      "incomes",
+      "envelopes",
+      "family_allocations",
+      "monthly_budgets",
+      "accounts",
+      "categories",
+    ] as const;
+    for (const table of tables) {
+      const { error } = await supabase.from(table).delete().eq("user_id", user.id);
+      if (error && error.code !== "PGRST205" && !/could not find the (table|relation)/i.test(error.message ?? "")) {
+        throw error;
+      }
+    }
+    const { error } = await supabase
+      .from("profiles")
+      .update({ default_salary: 0, tracker_mode: null })
+      .eq("id", user.id);
+    if (error) throw error;
+    refresh();
+    revalidatePath("/weekly");
+    return { reset: true };
+  }, "Could not reset the account.");
 }

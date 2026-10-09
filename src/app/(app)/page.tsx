@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { DashboardView } from "@/components/dashboard-view";
+import { LedgerHome } from "@/components/ledger-home";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ensureMonthBudget,
@@ -22,8 +23,10 @@ import {
   paydayWeekContaining,
   paydayWeeks,
   salaryDates,
+  monthRange,
   todayISO,
 } from "@/lib/finance/dates";
+import { summarizeLedger } from "@/lib/finance/ledger";
 import { summarizeMonthPlan } from "@/lib/finance/month-plan";
 import { weekSummaries } from "@/lib/finance/weekly";
 import { requestNow } from "@/lib/request-now";
@@ -60,6 +63,21 @@ async function Dashboard({
     getRecentTransactions(),
     getProfile(),
   ]);
+  if (profile.tracker_mode === "ledger") {
+    const month = params.month ?? today.slice(0, 7);
+    const range = monthRange(month);
+    const monthTransactions = await getTransactionsInRange(range.start, range.end);
+    return (
+      <LedgerHome
+        month={month}
+        summary={summarizeLedger(monthTransactions, categories)}
+        accounts={accounts}
+        categories={categories}
+        recent={monthTransactions.slice(0, 8)}
+      />
+    );
+  }
+
   const dates = salaryDates(salaries);
   const month = params.month ?? currentCycleMonth(dates, today);
   const cycle = payCycleForMonth(dates, month);

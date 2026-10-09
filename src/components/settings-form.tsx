@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, NativeSelect } from "@/components/ui/input";
 import { ExcelTools } from "@/components/excel-tools";
+import { ResetAccountCard } from "@/components/reset-account-card";
 import type { Envelope } from "@/lib/finance/month-plan";
 import type { Account, MonthlyBudget } from "@/lib/types";
 
@@ -201,6 +202,7 @@ export function SettingsForm({
       </Card>
 
       <ExcelTools />
+      <ResetAccountCard />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import {
   ensureMonthBudget,
   getAccounts,
   getCategories,
+  getProfile,
   getSalaryIncomes,
   getTransactionsInRange,
 } from "@/lib/data";
@@ -30,6 +31,7 @@ import {
 } from "@/lib/finance/dates";
 import { summarizeMonthPlan } from "@/lib/finance/month-plan";
 import { requestNow } from "@/lib/request-now";
+import { redirect } from "next/navigation";
 
 export default function WeeklyPage({
   searchParams,
@@ -55,11 +57,13 @@ async function Weekly({
   const now = await requestNow();
   const today = todayISO(now);
   const requested = params.week ?? today;
-  const [salaries, accounts, categories] = await Promise.all([
+  const [salaries, accounts, categories, profile] = await Promise.all([
     getSalaryIncomes(),
     getAccounts(),
     getCategories(),
+    getProfile(),
   ]);
+  if (profile.tracker_mode === "ledger") redirect("/");
   const cycle = payCycleForDate(salaryDates(salaries), requested) ?? payCycleForDate(salaryDates(salaries), today);
   const lastDay = cycle ? maxISODate(cycleHorizon(cycle, today), cycleHorizon(cycle, requested)) : null;
   const week = cycle && lastDay ? paydayWeekContaining(requested, cycle.start, lastDay) : null;

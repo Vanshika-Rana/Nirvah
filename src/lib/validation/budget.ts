@@ -45,6 +45,7 @@ export const categorySchema = z.object({
     "income",
     "transfer",
     "other",
+    "business",
   ]),
 });
 

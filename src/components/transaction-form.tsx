@@ -32,12 +32,14 @@ export function TransactionForm({
   transaction,
   defaultType = "expense",
   compact = false,
+  ledger = false,
 }: {
   accounts: Account[];
   categories: Category[];
   transaction?: Transaction;
   defaultType?: TransactionType;
   compact?: boolean;
+  ledger?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -63,6 +65,12 @@ export function TransactionForm({
   const [values, setValues] = useState(defaults);
 
   const needsCounterparty = values.type === "transfer" || values.type === "repayment";
+  const incomeSelected = values.type === "income";
+  const visibleCategories = ledger
+    ? activeCategories.filter((category) =>
+        incomeSelected ? category.bucket === "income" : category.bucket === "personal" || category.bucket === "business",
+      )
+    : activeCategories;
 
   function update<K extends keyof typeof values>(key: K, value: (typeof values)[K]) {
     setValues((current) => ({ ...current, [key]: value }));
@@ -86,7 +94,7 @@ export function TransactionForm({
         toast.error(result.error);
         return;
       }
-      toast.success(transaction ? "Transaction updated." : "Expense saved.");
+      toast.success(transaction ? "Transaction updated." : values.type === "income" ? "Income saved." : "Expense saved.");
       localStorage.setItem(
         PREFS_KEY,
         JSON.stringify({
@@ -127,6 +135,24 @@ export function TransactionForm({
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
+      {ledger ? (
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            type="button"
+            variant={incomeSelected ? "default" : "secondary"}
+            onClick={() => setValues((current) => ({ ...current, type: "income", category_id: "" }))}
+          >
+            Income
+          </Button>
+          <Button
+            type="button"
+            variant={!incomeSelected ? "default" : "secondary"}
+            onClick={() => setValues((current) => ({ ...current, type: "expense", category_id: "" }))}
+          >
+            Expense
+          </Button>
+        </div>
+      ) : null}
       <Field label="Amount">
         <div className="relative">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-lg text-muted">₹</span>
@@ -144,7 +170,7 @@ export function TransactionForm({
         </div>
       </Field>
 
-      <Field label="Spent from">
+      <Field label={incomeSelected ? "Received in" : "Spent from"}>
         <NativeSelect value={values.account_id} required onChange={(event) => update("account_id", event.target.value)}>
           <option value="">Choose account</option>
           {activeAccounts.map((account) => (
@@ -158,9 +184,11 @@ export function TransactionForm({
       <Field label="What for">
         <NativeSelect value={values.category_id} onChange={(event) => update("category_id", event.target.value)}>
           <option value="">No category</option>
-          {activeCategories.map((category) => (
+          {visibleCategories.map((category) => (
             <option key={category.id} value={category.id}>
-              {category.name}
+              {ledger && (category.bucket === "personal" || category.bucket === "business")
+                ? `${category.bucket === "business" ? "Business" : "Personal"} · ${category.name}`
+                : category.name}
             </option>
           ))}
         </NativeSelect>
@@ -237,7 +265,7 @@ export function TransactionForm({
         disabled={pending}
         className="sticky bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-20 w-full shadow-[0_-10px_24px_rgba(246,241,234,0.95)] md:bottom-0"
       >
-        {pending ? "Saving…" : transaction ? "Save changes" : "Save expense"}
+        {pending ? "Saving…" : transaction ? "Save changes" : incomeSelected ? "Save income" : "Save expense"}
       </Button>
       {transaction ? (
         <Button type="button" variant="danger" disabled={pending} onClick={onDelete}>

@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 const sql = [
   readFileSync(resolve(process.cwd(), "supabase/migrations/0001_init.sql"), "utf8"),
   readFileSync(resolve(process.cwd(), "supabase/migrations/0002_envelopes_income.sql"), "utf8"),
+  readFileSync(resolve(process.cwd(), "supabase/migrations/0003_ledger_mode.sql"), "utf8"),
 ].join("\n");
 
 const tables = [

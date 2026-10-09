@@ -14,9 +14,11 @@ import { createServerSupabase } from "@/lib/supabase/server";
 import type {
   Account,
   Category,
+  CategoryBucket,
   FamilyAllocation,
   MonthlyBudget,
   Profile,
+  TrackerMode,
   Transaction,
 } from "@/lib/types";
 import { redirect } from "next/navigation";
@@ -101,12 +103,23 @@ export async function getProfile() {
       id: user.id,
       week_start_day: 1,
       default_salary: 0,
+      tracker_mode: null,
       created_at: "",
       updated_at: "",
     } satisfies Profile;
   }
   const profile = data as Profile;
-  return { ...profile, default_salary: Number(profile.default_salary ?? 0) };
+  return {
+    ...profile,
+    default_salary: Number(profile.default_salary ?? 0),
+    tracker_mode: readTrackerMode(profile.tracker_mode),
+  };
+}
+
+function readTrackerMode(value: unknown): TrackerMode | null {
+  if (value === "ledger" || value === "envelopes") return value;
+  if (value === null) return null;
+  return "envelopes";
 }
 
 export async function getAccounts(): Promise<Account[]> {
@@ -363,6 +376,7 @@ export type HistoryFilters = {
   categoryId?: string;
   accountId?: string;
   type?: string;
+  bucket?: CategoryBucket;
   query?: string;
   page?: number;
 };
@@ -389,6 +403,14 @@ export async function getHistory(filters: HistoryFilters) {
   }
   if (filters.weekStart && filters.weekEnd) {
     request = request.gte("occurred_on", filters.weekStart).lte("occurred_on", filters.weekEnd);
+  }
+  if (filters.bucket) {
+    const categories = await getCategories();
+    const ids = categories.filter((category) => category.bucket === filters.bucket).map((category) => category.id);
+    if (ids.length === 0) {
+      return { transactions: [], total: 0, page, pageSize: HISTORY_PAGE_SIZE };
+    }
+    request = request.in("category_id", ids);
   }
   if (filters.categoryId) request = request.eq("category_id", filters.categoryId);
   if (filters.accountId) request = request.eq("account_id", filters.accountId);

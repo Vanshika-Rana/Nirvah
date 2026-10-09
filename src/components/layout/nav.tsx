@@ -5,10 +5,16 @@ import { usePathname } from "next/navigation";
 import { CalendarRange, History, Home, Plus, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const items = [
+const envelopeItems = [
   { href: "/", label: "Home", short: "Home", icon: Home },
   { href: "/add", label: "Add expense", short: "Add", icon: Plus },
   { href: "/weekly", label: "Weekly", short: "Week", icon: CalendarRange },
+  { href: "/history", label: "History", short: "History", icon: History },
+];
+
+const ledgerItems = [
+  { href: "/", label: "Home", short: "Home", icon: Home },
+  { href: "/add", label: "Add", short: "Add", icon: Plus },
   { href: "/history", label: "History", short: "History", icon: History },
 ];
 
@@ -17,11 +23,12 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function BottomNav() {
+export function BottomNav({ mode = "envelopes" }: { mode?: "envelopes" | "ledger" }) {
   const pathname = usePathname();
+  const items = mode === "ledger" ? ledgerItems : envelopeItems;
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 pb-[max(0.4rem,env(safe-area-inset-bottom))] backdrop-blur md:hidden">
-      <ul className="grid grid-cols-4">
+      <ul className={`grid ${mode === "ledger" ? "grid-cols-3" : "grid-cols-4"}`}>
         {items.map((item) => {
           const active = isActive(pathname, item.href);
           const Icon = item.icon;
@@ -58,13 +65,14 @@ export function BottomNav() {
   );
 }
 
-export function Sidebar() {
+export function Sidebar({ mode = "envelopes" }: { mode?: "envelopes" | "ledger" }) {
   const pathname = usePathname();
+  const items = mode === "ledger" ? ledgerItems : envelopeItems;
   return (
     <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 border-r border-border bg-card p-5 md:flex md:flex-col">
       <div className="mb-8">
         <p className="text-lg font-semibold tracking-tight">Nirvah</p>
-        <p className="text-sm text-muted">Personal budget</p>
+        <p className="text-sm text-muted">{mode === "ledger" ? "Income and expenses" : "Personal budget"}</p>
       </div>
       <nav className="flex flex-1 flex-col gap-1">
         {items.map((item) => {

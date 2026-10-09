@@ -8,6 +8,7 @@ const profile: Profile = {
   id: "u",
   week_start_day: 1,
   default_salary: 0,
+  tracker_mode: "envelopes",
   created_at: "",
   updated_at: "",
 };
