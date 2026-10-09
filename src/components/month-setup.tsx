@@ -12,18 +12,24 @@ import { ENVELOPE_KIND_LABELS, type EnvelopeKind, type Income } from "@/lib/fina
 import { formatDayLabel, todayISO } from "@/lib/finance/dates";
 import { formatINR } from "@/lib/finance/money";
 
-function defaultIncomeDate(month: string): string {
+function defaultIncomeDate(cycleStart: string | null, cycleEnd: string | null): string {
   const today = todayISO(new Date());
-  return today.startsWith(month) ? today : `${month}-01`;
+  if (cycleStart && today >= cycleStart && (!cycleEnd || today <= cycleEnd)) return today;
+  if (cycleStart) return cycleStart;
+  return today;
 }
 
 export function AddIncomeCard({
   month,
   defaultSalary,
+  cycleStart = null,
+  cycleEnd = null,
   collapsed = false,
 }: {
   month: string;
   defaultSalary: number;
+  cycleStart?: string | null;
+  cycleEnd?: string | null;
   collapsed?: boolean;
 }) {
   const router = useRouter();
@@ -31,7 +37,7 @@ export function AddIncomeCard({
   const [open, setOpen] = useState(!collapsed);
   const [amount, setAmount] = useState(defaultSalary > 0 ? String(defaultSalary) : "");
   const [label, setLabel] = useState("Salary");
-  const [occurredOn, setOccurredOn] = useState(() => defaultIncomeDate(month));
+  const [occurredOn, setOccurredOn] = useState(() => defaultIncomeDate(cycleStart, cycleEnd));
 
   function save(nextAmount: number, nextLabel: string, isSalary: boolean) {
     startTransition(async () => {
@@ -63,9 +69,9 @@ export function AddIncomeCard({
   return (
     <Card className="space-y-3">
       <div>
-        <h2 className="text-base font-semibold">Money received this month</h2>
+        <h2 className="text-base font-semibold">Money received this payday</h2>
         <p className="text-sm text-muted">
-          Add salary on the day it arrived. Weeks start then and keep going until next month’s salary. Extra money does not move week 1.
+          Add salary on the day it arrived. That day starts your month. Extra money in between does not restart it. Next month starts when you log the next salary.
         </p>
       </div>
       {defaultSalary > 0 ? (
@@ -152,7 +158,7 @@ export function AddEnvelopeCard({
     <div className="space-y-3">
       {collapsed ? null : (
         <div>
-          <h2 className="text-base font-semibold">Split this month</h2>
+          <h2 className="text-base font-semibold">Split this payday</h2>
           <p className="text-sm text-muted">Create your own buckets: spending, savings, family, loan, anything.</p>
         </div>
       )}

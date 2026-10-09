@@ -26,6 +26,8 @@ export function DashboardView({
   weeklySpent,
   weekBars,
   salaryDate,
+  cycleEnd,
+  salaryDates,
   recent,
   accounts,
   categories,
@@ -39,6 +41,8 @@ export function DashboardView({
   weeklySpent: number;
   weekBars: { start: string; end: string; spent: number; target: number }[];
   salaryDate: string | null;
+  cycleEnd: string | null;
+  salaryDates: string[];
   recent: Transaction[];
   accounts: Account[];
   categories: Category[];
@@ -58,10 +62,10 @@ export function DashboardView({
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
         <div>
           <p className="text-sm text-muted">{greeting}</p>
-          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">This month</h1>
+          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">This payday</h1>
         </div>
         <div className="flex w-full items-center gap-2 sm:w-auto">
-          <MonthSelector month={month} />
+          <MonthSelector month={month} salaryDates={salaryDates} />
           <Button asChild size="lg" className="hidden shrink-0 md:inline-flex">
             <Link href="/add">
               <Plus /> Add expense
@@ -71,7 +75,7 @@ export function DashboardView({
       </div>
 
       <Card className="bg-[linear-gradient(180deg,#fffcf7_0%,#f3faf7_100%)]">
-        <MoneyRing spent={plan.expenses} remaining={Math.max(0, plan.remaining)} label="Left in this month’s pot" />
+        <MoneyRing spent={plan.expenses} remaining={Math.max(0, plan.remaining)} label="Left until next salary" />
         <p className="mt-4 text-sm leading-6 text-foreground">{plan.motivation}</p>
         {plan.available > 0 ? (
           <div className="mt-5">
@@ -84,18 +88,26 @@ export function DashboardView({
           </div>
         ) : null}
         <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-3 text-sm sm:mt-5 sm:grid-cols-4">
-          <Stat label="From last month" value={plan.opening} />
-          <Stat label="Added this month" value={plan.income} />
+          <Stat label="From last payday" value={plan.opening} />
+          <Stat label="Added this payday" value={plan.income} />
           <Stat label="Spent" value={plan.expenses} />
-          <Stat label="Rolls to next month" value={plan.carryToNextMonth} highlight />
+          <Stat label="Rolls to next payday" value={plan.carryToNextMonth} highlight />
         </div>
       </Card>
 
-      {needsIncome ? <AddIncomeCard month={month} defaultSalary={defaultSalary} /> : null}
+      {needsIncome ? (
+        <AddIncomeCard month={month} defaultSalary={defaultSalary} cycleStart={salaryDate} cycleEnd={cycleEnd} />
+      ) : null}
       {incomes.length > 0 ? <IncomeChips incomes={incomes} /> : null}
       {!needsIncome ? (
         <div className="flex flex-wrap items-center gap-2">
-          <AddIncomeCard month={month} defaultSalary={defaultSalary} collapsed />
+          <AddIncomeCard
+            month={month}
+            defaultSalary={defaultSalary}
+            cycleStart={salaryDate}
+            cycleEnd={cycleEnd}
+            collapsed
+          />
         </div>
       ) : null}
 
@@ -135,7 +147,7 @@ export function DashboardView({
           </CardHeader>
           {!salaryDate ? (
             <p className="mb-3 text-sm text-muted">
-              Add this month’s salary above. Weeks run from that payday until you log the next month’s salary.
+              Add this payday’s salary above. Your month starts that day and runs until the next month’s salary.
             </p>
           ) : weeklyTarget > 0 ? (
             <div className="mb-3">
@@ -145,7 +157,10 @@ export function DashboardView({
                 </span>
                 <span className="font-medium">{weeklyPercent}%</span>
               </div>
-              <p className="mb-1 text-xs text-muted">Payday {formatDayLabel(salaryDate)} · until next month’s salary</p>
+              <p className="mb-1 text-xs text-muted">
+                Payday {formatDayLabel(salaryDate)}
+                {cycleEnd ? ` – ${formatDayLabel(cycleEnd)}` : " · until next month’s salary"}
+              </p>
               <div className="h-2.5 overflow-hidden rounded-full bg-[#efe8de]">
                 <div
                   className="h-full rounded-full bg-accent"

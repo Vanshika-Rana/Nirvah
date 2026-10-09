@@ -59,7 +59,7 @@ export function MoneyRing({
       <div className="min-w-0">
         <p className="text-sm text-muted">{label}</p>
         <p className="text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl">{formatINR(kept)}</p>
-        <p className="mt-1 text-sm text-muted">{formatINR(spent)} spent this month</p>
+        <p className="mt-1 text-sm text-muted">{formatINR(spent)} spent this payday</p>
       </div>
     </div>
   );
@@ -81,20 +81,20 @@ export function MoneyFlow({
   return (
     <div className="space-y-3">
       <div>
-        <p className="mb-1.5 text-xs font-medium text-muted">This month’s pot</p>
+        <p className="mb-1.5 text-xs font-medium text-muted">This payday’s pot</p>
         <div className="flex h-3 overflow-hidden rounded-full bg-[#efe8de]">
           {opening > 0 ? (
             <div
               className="bg-[#b45309]"
               style={{ width: `${(opening / pot) * 100}%` }}
-              title={`From last month ${formatINR(opening)}`}
+              title={`From last payday ${formatINR(opening)}`}
             />
           ) : null}
           {income > 0 ? (
             <div
               className="bg-[#0d9488]"
               style={{ width: `${(income / pot) * 100}%` }}
-              title={`Added this month ${formatINR(income)}`}
+              title={`Added this payday ${formatINR(income)}`}
             />
           ) : null}
         </div>
@@ -102,7 +102,7 @@ export function MoneyFlow({
           {opening > 0 ? (
             <span>
               <span className="mr-1 inline-block size-2 rounded-full bg-[#b45309]" />
-              Last month {formatINR(opening)}
+              Last payday {formatINR(opening)}
             </span>
           ) : null}
           <span>
@@ -127,7 +127,7 @@ export function MoneyFlow({
         </div>
         <div className="mt-1.5 flex flex-wrap justify-between gap-x-3 gap-y-1 text-xs">
           <span className="text-muted">Spent {formatINR(spent)}</span>
-          <span className="font-medium text-accent">Kept {formatINR(kept)} → next month</span>
+          <span className="font-medium text-accent">Kept {formatINR(kept)} → next payday</span>
         </div>
       </div>
     </div>

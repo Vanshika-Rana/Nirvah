@@ -130,28 +130,30 @@ export function summarizeDashboard(input: {
   cycleEnd?: string | null;
 }): DashboardSummary {
   const month = monthRange(input.budget.year_month);
+  const periodStart = input.cycleStart ?? month.start;
+  const periodEnd = input.cycleEnd ?? month.end;
   const week = input.cycleStart
-    ? paydayWeekContaining(input.today, input.cycleStart, input.cycleEnd ?? input.today) ?? {
+    ? paydayWeekContaining(input.today, input.cycleStart, periodEnd) ?? {
         start: input.today,
         end: input.today,
       }
     : weekRange(input.today, input.weekStartsOn);
   const monthTransactions = input.transactions.filter((transaction) =>
-    inRange(transaction.occurred_on, month.start, month.end),
+    inRange(transaction.occurred_on, periodStart, periodEnd),
   );
 
   const personalSpent = sumByKind(
     monthTransactions,
     input.categories,
-    month.start,
-    month.end,
+    periodStart,
+    periodEnd,
     "personal",
   );
   const familySpent = sumByKind(
     monthTransactions,
     input.categories,
-    month.start,
-    month.end,
+    periodStart,
+    periodEnd,
     "family",
   );
   const combinedSpent = roundMoney(personalSpent + familySpent);
@@ -179,7 +181,7 @@ export function summarizeDashboard(input: {
     monthToDatePersonal: personalSpent,
     today: input.today,
     weekEnd: week.end,
-    monthEnd: month.end,
+    cycleEnd: periodEnd,
   });
 
   return {
@@ -227,8 +229,8 @@ export function summarizeDashboard(input: {
     categoryBreakdown: categoryBreakdown(
       monthTransactions,
       input.categories,
-      month.start,
-      month.end,
+      periodStart,
+      periodEnd,
     ),
     cashEstimate: cashEstimateFromTransactions(monthTransactions),
   };

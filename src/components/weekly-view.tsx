@@ -23,6 +23,7 @@ export function WeeklyView({
   prevStart,
   nextStart,
   salaryDate,
+  cycleEnd,
 }: {
   start: string;
   end: string;
@@ -35,6 +36,7 @@ export function WeeklyView({
   prevStart: string | null;
   nextStart: string | null;
   salaryDate: string | null;
+  cycleEnd: string | null;
 }) {
   const kept = Math.max(0, availability.remainingVsWeeklyTarget);
   const target = Math.max(availability.weeklyTarget, 1);
@@ -80,29 +82,47 @@ export function WeeklyView({
           >
             <div className="absolute inset-3 flex flex-col items-center justify-center rounded-full bg-card">
               <p className="text-xl font-semibold tracking-tight">{Math.max(0, percent)}%</p>
-              <p className="text-[11px] text-muted">left</p>
+              <p className="text-[11px] text-muted">{kept >= 0 ? "left" : "over"}</p>
             </div>
           </div>
           <div className="min-w-0">
             <p className="text-sm text-muted">
-              {availability.weeklyTarget > 0 ? "Left of this week’s target" : "Spent this week"}
+              {availability.weeklyTarget > 0
+                ? kept >= 0
+                  ? "Still OK to spend this week"
+                  : "Over this week’s target"
+                : "Spent this week"}
             </p>
             <p className="text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl">
-              {formatINR(availability.weeklyTarget > 0 ? kept : availability.spentThisWeek)}
+              {formatINR(availability.weeklyTarget > 0 ? Math.abs(kept) : availability.spentThisWeek)}
             </p>
             <p className="mt-1 text-sm text-muted">
               {formatINR(availability.spentThisWeek)} spent
-              {availability.weeklyTarget > 0 ? ` of ${formatINR(availability.weeklyTarget)}` : ". Set a weekly target on Home."}
+              {availability.weeklyTarget > 0
+                ? ` of your ${formatINR(availability.weeklyTarget)} weekly target`
+                : ". Set a weekly target on Home."}
             </p>
             {salaryDate ? (
-              <p className="mt-1 text-xs text-muted">Payday {formatDayLabel(salaryDate)} · until next month’s salary</p>
+              <p className="mt-1 text-xs text-muted">
+                This payday started {formatDayLabel(salaryDate)}
+                {cycleEnd ? ` and runs until ${formatDayLabel(cycleEnd)}` : " and runs until you log next month’s salary"}
+                . Weeks are 7-day stretches inside that.
+              </p>
             ) : (
-              <p className="mt-1 text-xs text-muted">Log salary on Home. Weeks then run until the next month’s salary.</p>
+              <p className="mt-1 text-xs text-muted">
+                Log salary on Home. Your month then runs until the next month’s salary.
+              </p>
             )}
           </div>
         </div>
         <p className="mt-4 text-sm text-muted">
-          Pace {formatINR(availability.suggestedDaily)} / day · {formatINR(Math.max(0, availability.remainingMonthly))} left this month
+          {cycleEnd
+            ? `To last until ${formatDayLabel(cycleEnd)}, about ${formatINR(availability.suggestedDaily)} a day`
+            : `About ${formatINR(availability.suggestedDaily)} a day if this payday lasts around a month`}
+          {availability.remainingDaysInCycle > 0
+            ? ` (${formatINR(Math.max(0, availability.remainingMonthly))} left over ${availability.remainingDaysInCycle} days)`
+            : ""}
+          . This is not the weekly target — it is the leftover pot until the next salary.
         </p>
       </Card>
 
@@ -112,7 +132,7 @@ export function WeeklyView({
           <p>{availability.warning}</p>
         </div>
       ) : (
-        <p className="text-sm text-muted">Stay under the line. Money you don’t spend this week rolls with the month.</p>
+        <p className="text-sm text-muted">Stay under the line. Money you don’t spend this week stays in this payday’s pot.</p>
       )}
 
       <Card>

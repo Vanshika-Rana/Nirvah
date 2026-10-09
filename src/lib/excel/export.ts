@@ -12,6 +12,7 @@ import {
   formatMonthLabel,
   monthRange,
   payCycleForDate,
+  payCycleForMonth,
   paydayWeeks,
   salaryDates,
   toISODate,
@@ -100,15 +101,16 @@ export function buildWorkbook(payload: ExportPayload): XLSX.WorkBook {
     const monthKey = budget.year_month.slice(0, 7);
     const month = monthRange(monthKey);
     const dates = salaryDates(payload.incomes ?? []);
-    const cycle = payCycleForDate(dates, month.end);
+    const cycle = payCycleForMonth(dates, monthKey);
+    const periodEnd = cycle?.end ?? (cycle ? cycleHorizon(cycle, month.end) : month.end);
     const summary = summarizeDashboard({
       budget: { ...budget, year_month: monthKey },
       transactions: payload.transactions,
       categories: payload.categories,
-      today: month.end,
+      today: periodEnd,
       weekStartsOn,
       cycleStart: cycle?.start,
-      cycleEnd: cycle ? cycleHorizon(cycle, month.end) : null,
+      cycleEnd: periodEnd,
     });
     return {
       month: formatMonthLabel(budget.year_month.slice(0, 7)),

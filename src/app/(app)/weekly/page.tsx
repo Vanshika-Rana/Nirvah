@@ -19,13 +19,14 @@ import {
 import {
   adjacentPaydayWeek,
   cycleHorizon,
+  cycleSpendEnd,
   maxISODate,
-  monthRange,
   payCycleForDate,
   paydayWeekContaining,
   salaryDates,
   todayISO,
   toYearMonth,
+  typicalCycleEnd,
 } from "@/lib/finance/dates";
 import { summarizeMonthPlan } from "@/lib/finance/month-plan";
 import { requestNow } from "@/lib/request-now";
@@ -75,7 +76,7 @@ async function Weekly({
           monthToDatePersonal: 0,
           today,
           weekEnd: today,
-          monthEnd: today,
+          cycleEnd: today,
         })}
         daily={[]}
         transactions={[]}
@@ -85,24 +86,24 @@ async function Weekly({
         prevStart={null}
         nextStart={null}
         salaryDate={null}
+        cycleEnd={null}
       />
     );
   }
 
-  const capMonth = today >= week.start && today <= week.end ? toYearMonth(today) : toYearMonth(week.start);
+  const spendEnd = cycleSpendEnd(cycle, today);
   const [{ budget, envelopes, incomes }, transactions] = await Promise.all([
-    ensureMonthBudget(capMonth),
-    getTransactionsInRange(week.start, week.end),
+    ensureMonthBudget(toYearMonth(cycle.start)),
+    getTransactionsInRange(cycle.start, spendEnd),
   ]);
-  const monthDates = monthRange(capMonth);
-  const monthTransactions = transactions.filter(
-    (transaction) => transaction.occurred_on >= monthDates.start && transaction.occurred_on <= monthDates.end,
+  const cycleTransactions = transactions.filter(
+    (transaction) => transaction.occurred_on >= cycle.start && transaction.occurred_on <= spendEnd,
   );
   const plan = summarizeMonthPlan({
     opening: budget.opening_balance,
     incomes,
     envelopes,
-    transactions: monthTransactions,
+    transactions: cycleTransactions,
     categories,
   });
   const spentThisWeek = personalSpentInRange(transactions, categories, week.start, week.end);
@@ -113,7 +114,8 @@ async function Weekly({
     monthToDatePersonal: plan.expenses,
     today: today >= week.start && today <= week.end ? today : week.end,
     weekEnd: week.end,
-    monthEnd: monthDates.end,
+    cycleEnd: cycle.end ?? week.end,
+    paceEnd: cycle.end ?? typicalCycleEnd(cycle.start),
   });
   const weekTransactions = transactions.filter(
     (transaction) => transaction.occurred_on >= week.start && transaction.occurred_on <= week.end && transaction.type === "expense",
@@ -138,6 +140,7 @@ async function Weekly({
       prevStart={prev?.start ?? null}
       nextStart={next?.start ?? null}
       salaryDate={cycle.start}
+      cycleEnd={cycle.end}
     />
   );
 }

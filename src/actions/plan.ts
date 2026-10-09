@@ -1,9 +1,9 @@
 "use server";
 
 import { fail, withAction, type ActionResult } from "@/lib/action-result";
-import { getAuthContext } from "@/lib/data";
+import { ensureMonthBudget, getAuthContext, getSalaryIncomes } from "@/lib/data";
 import { ENVELOPE_KINDS, type EnvelopeKind } from "@/lib/finance/month-plan";
-import { isISODate } from "@/lib/finance/dates";
+import { isISODate, salaryDates, yearMonthForIncomeDate } from "@/lib/finance/dates";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -35,16 +35,21 @@ export async function addIncome(input: {
     })
     .safeParse(input);
   if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Check the income.");
-  if (!parsed.data.occurredOn.startsWith(parsed.data.yearMonth)) {
-    return fail("Pick a date in this month. Weeks start from the salary date.");
-  }
   return withAction(async () => {
+    const salaries = await getSalaryIncomes();
+    const yearMonth = yearMonthForIncomeDate(
+      salaryDates(salaries),
+      parsed.data.occurredOn,
+      Boolean(parsed.data.isSalary),
+      parsed.data.yearMonth,
+    );
+    await ensureMonthBudget(yearMonth);
     const { supabase, user } = await getAuthContext();
     const { data, error } = await supabase
       .from("incomes")
       .insert({
         user_id: user.id,
-        year_month: `${parsed.data.yearMonth}-01`,
+        year_month: `${yearMonth}-01`,
         amount: parsed.data.amount,
         label: parsed.data.label,
         is_salary: Boolean(parsed.data.isSalary),

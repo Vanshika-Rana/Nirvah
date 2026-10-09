@@ -36,7 +36,7 @@ export function SettingsForm({
         <CardHeader>
           <CardTitle>Usual salary</CardTitle>
         </CardHeader>
-        <p className="mb-3 text-sm text-muted">Saved so next month you can add it in one tap. Extra income is added separately on Home.</p>
+        <p className="mb-3 text-sm text-muted">Saved so next payday you can add it in one tap. Extra income is added separately on Home.</p>
         <div className="flex gap-2">
           <Input className="min-w-0 flex-1" inputMode="decimal" value={salary} onChange={(event) => setSalary(event.target.value)} />
           <Button className="shrink-0"
@@ -58,7 +58,7 @@ export function SettingsForm({
         <CardHeader>
           <CardTitle>Weekly target</CardTitle>
         </CardHeader>
-        <p className="mb-3 text-sm text-muted">Optional. Counts in 7-day blocks from payday until you log next month’s salary. A leftover stub at the end of that cycle gets a smaller slice. Calendar leftover still rolls month to month.</p>
+        <p className="mb-3 text-sm text-muted">Optional. Counts in 7-day blocks from payday until you log next month’s salary. A leftover stub at the end of that cycle gets a smaller slice. Leftover money rolls to the next payday.</p>
         <div className="flex gap-2">
           <Input className="min-w-0 flex-1" inputMode="decimal" value={weekly} onChange={(event) => setWeekly(event.target.value)} />
           <Button className="shrink-0"
@@ -78,7 +78,7 @@ export function SettingsForm({
 
       <Card>
         <CardHeader>
-          <CardTitle>This month’s envelopes</CardTitle>
+          <CardTitle>This payday’s envelopes</CardTitle>
         </CardHeader>
         <p className="mb-3 text-sm text-muted">Edit amounts here. Next month copies these names so you are not starting from scratch.</p>
         <ul className="space-y-2">
@@ -136,7 +136,7 @@ export function SettingsForm({
           <CardTitle>Weekly cycle</CardTitle>
         </CardHeader>
         <p className="text-sm text-muted">
-          Weeks start the day you log salary and continue payday to payday. Logging next month’s salary begins a new cycle. Monthly leftover still closes on the calendar month.
+          Your month starts the day you log salary and runs until the next month’s salary, even if that crosses the 1st. Leftover money rolls into the next payday. Extra income in between does not restart the cycle.
         </p>
       </Card>
 

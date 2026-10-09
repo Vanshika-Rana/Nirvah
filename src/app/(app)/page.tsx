@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import { DashboardView } from "@/components/dashboard-view";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  currentYearMonth,
   ensureMonthBudget,
   getAccounts,
   getCategories,
@@ -11,16 +10,15 @@ import {
   getSalaryIncomes,
   getTransactionsInRange,
   isMonthPlanSchemaReady,
-  lookbackStart,
 } from "@/lib/data";
 import { isSupabaseConfigured } from "@/lib/env";
 import {
+  currentCycleMonth,
   cycleHorizon,
+  cycleSpendEnd,
   greetingForHour,
-  maxISODate,
-  minISODate,
-  monthRange,
-  payCycleForDate,
+  hourInIndia,
+  payCycleForMonth,
   paydayWeekContaining,
   paydayWeeks,
   salaryDates,
@@ -49,37 +47,31 @@ async function Dashboard({
 }) {
   const params = await searchParams;
   const now = await requestNow();
-  const month = params.month ?? currentYearMonth(now);
   if (!isSupabaseConfigured()) {
     return <p className="text-sm text-muted">Configure Supabase to load live totals.</p>;
   }
 
   const today = todayISO(now);
-  const profile = await getProfile();
-  const [schemaReady, { budget, envelopes, incomes }, accounts, categories, recent, salaries] = await Promise.all([
+  const [schemaReady, salaries, accounts, categories, recent, profile] = await Promise.all([
     isMonthPlanSchemaReady(),
-    ensureMonthBudget(month),
+    getSalaryIncomes(),
     getAccounts(),
     getCategories(),
     getRecentTransactions(),
-    getSalaryIncomes(),
+    getProfile(),
   ]);
-  const range = monthRange(month);
-  const thisMonth = currentYearMonth(now);
-  const anchor = month === thisMonth ? today : today < range.start ? range.start : range.end;
-  const cycle = payCycleForDate(salaryDates(salaries), anchor);
-  const horizon = cycle ? cycleHorizon(cycle, today) : range.end;
-  const txStart = cycle ? minISODate(lookbackStart(month, now), cycle.start) : lookbackStart(month, now);
-  const txEnd = cycle ? maxISODate(range.end, horizon) : range.end;
-  const transactions = await getTransactionsInRange(txStart, txEnd);
-  const monthTransactions = transactions.filter(
-    (transaction) => transaction.occurred_on >= range.start && transaction.occurred_on <= range.end,
-  );
+  const dates = salaryDates(salaries);
+  const month = params.month ?? currentCycleMonth(dates, today);
+  const cycle = payCycleForMonth(dates, month);
+  const { budget, envelopes, incomes } = await ensureMonthBudget(month);
+  const spendEnd = cycle ? cycleSpendEnd(cycle, today) : today;
+  const horizon = cycle ? cycleHorizon(cycle, today) : today;
+  const transactions = cycle ? await getTransactionsInRange(cycle.start, spendEnd) : [];
   const plan = summarizeMonthPlan({
     opening: budget.opening_balance,
     incomes,
     envelopes,
-    transactions: monthTransactions,
+    transactions,
     categories,
   });
   const salaryDate = cycle?.start ?? null;
@@ -100,12 +92,14 @@ async function Dashboard({
       ) : null}
     <DashboardView
       month={month}
-      greeting={greetingForHour(now.getHours())}
+      greeting={greetingForHour(hourInIndia(now))}
       plan={plan}
       weeklyTarget={budget.weekly_target}
       weeklySpent={weeklySpent}
       weekBars={weekBars}
       salaryDate={salaryDate}
+      cycleEnd={cycle?.end ?? null}
+      salaryDates={dates}
       recent={recent}
       accounts={accounts}
       categories={categories}

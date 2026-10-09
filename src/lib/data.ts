@@ -1,5 +1,14 @@
 import { HISTORY_PAGE_SIZE } from "@/lib/constants";
-import { addMonths, monthRange, parseYearMonth, toYearMonth } from "@/lib/finance/dates";
+import {
+  addMonths,
+  cycleSpendEnd,
+  monthRange,
+  parseYearMonth,
+  payCycleForMonth,
+  salaryDates,
+  todayISO,
+  toYearMonth,
+} from "@/lib/finance/dates";
 import { computeCarryOver, expenseOutflows, type Envelope, type Income } from "@/lib/finance/month-plan";
 import { createServerSupabase } from "@/lib/supabase/server";
 import type {
@@ -190,7 +199,11 @@ async function previousCarryOver(yearMonth: string): Promise<{
   }
 
   const prev = mapBudget(previous.data as MonthlyBudget);
-  const range = monthRange(prev.year_month);
+  const salaries = await getSalaryIncomes();
+  const prevCycle = payCycleForMonth(salaryDates(salaries), prev.year_month);
+  const range = prevCycle
+    ? { start: prevCycle.start, end: cycleSpendEnd(prevCycle, monthRange(prev.year_month).end) }
+    : monthRange(prev.year_month);
   const [incomes, envelopes, transactions] = await Promise.all([
     getIncomes(prev.year_month),
     getEnvelopes(prev.year_month),
@@ -224,9 +237,19 @@ export async function ensureMonthBudget(yearMonth: string): Promise<{
     .maybeSingle();
 
   if (existing.data) {
+    const previous = await previousCarryOver(yearMonth);
+    const budget = mapBudget(existing.data as MonthlyBudget);
+    if (budget.opening_balance !== previous.opening) {
+      await supabase
+        .from("monthly_budgets")
+        .update({ opening_balance: previous.opening })
+        .eq("user_id", user.id)
+        .eq("year_month", month);
+      budget.opening_balance = previous.opening;
+    }
     const [envelopes, incomes] = await Promise.all([getEnvelopes(yearMonth), getIncomes(yearMonth)]);
     return {
-      budget: mapBudget(existing.data as MonthlyBudget),
+      budget,
       familyAllocations: [],
       envelopes,
       incomes,
@@ -333,6 +356,8 @@ export async function getAllExportData() {
 
 export type HistoryFilters = {
   month?: string;
+  from?: string;
+  to?: string;
   weekStart?: string;
   weekEnd?: string;
   categoryId?: string;
@@ -356,7 +381,9 @@ export async function getHistory(filters: HistoryFilters) {
     .order("created_at", { ascending: false })
     .range(from, to);
 
-  if (filters.month) {
+  if (filters.from && filters.to) {
+    request = request.gte("occurred_on", filters.from).lte("occurred_on", filters.to);
+  } else if (filters.month) {
     const range = monthRange(filters.month);
     request = request.gte("occurred_on", range.start).lte("occurred_on", range.end);
   }
@@ -392,7 +419,7 @@ export async function getRecentTransactions(limit = 8): Promise<Transaction[]> {
 }
 
 export function currentYearMonth(now: Date): string {
-  return toYearMonth(now);
+  return todayISO(now).slice(0, 7);
 }
 
 export function lookbackStart(yearMonth: string, now: Date, weeks = 8): string {

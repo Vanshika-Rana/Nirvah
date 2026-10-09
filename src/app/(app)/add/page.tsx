@@ -1,14 +1,18 @@
 import { TransactionForm } from "@/components/transaction-form";
 import { AddAccountCard, AddEnvelopeCard } from "@/components/month-setup";
-import { currentYearMonth, ensureMonthBudget, getAccounts, getCategories } from "@/lib/data";
+import { ensureMonthBudget, getAccounts, getCategories, getSalaryIncomes } from "@/lib/data";
 import { isSupabaseConfigured } from "@/lib/env";
+import { currentCycleMonth, salaryDates, todayISO } from "@/lib/finance/dates";
 import { requestNow } from "@/lib/request-now";
 
 export default async function AddPage() {
   if (!isSupabaseConfigured()) {
     return <p className="text-sm text-muted">Configure Supabase before adding expenses.</p>;
   }
-  const month = currentYearMonth(await requestNow());
+  const now = await requestNow();
+  const today = todayISO(now);
+  const salaries = await getSalaryIncomes();
+  const month = currentCycleMonth(salaryDates(salaries), today);
   const [accounts, categories, { envelopes }] = await Promise.all([
     getAccounts(),
     getCategories(),

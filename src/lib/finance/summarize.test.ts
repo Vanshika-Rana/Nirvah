@@ -217,12 +217,12 @@ describe("weekly vs monthly cap", () => {
       monthToDatePersonal: 33800,
       today: "2026-10-26",
       weekEnd: "2026-11-01",
-      monthEnd: "2026-10-31",
+      cycleEnd: "2026-10-31",
     });
     expect(availability.availableThisWeek).toBe(1200);
     expect(availability.monthlyCapApplies).toBe(true);
     expect(availability.warning).toContain("₹1,200");
-    expect(availability.warning).toContain("left this month");
+    expect(availability.warning).toContain("left this payday");
   });
 });
 

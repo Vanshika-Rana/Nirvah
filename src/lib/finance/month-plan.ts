@@ -161,15 +161,15 @@ export function summarizeMonthPlan(input: {
     };
   });
 
-  let motivation = "Add what you received this month, then split it into envelopes.";
+  let motivation = "Add salary on the day it arrived, then split it into envelopes. Your month runs until the next salary.";
   if (available > 0 && expenses === 0) {
-    motivation = `You have ${formatINR(available)} to work with. Split it, then spend less than you planned — leftovers move to next month.`;
+    motivation = `You have ${formatINR(available)} to work with. Split it, then spend less than you planned — leftovers move to the next payday.`;
   } else if (remaining > 0 && saveRate >= 20) {
-    motivation = `Strong month so far. ${formatINR(carryToNextMonth)} is on track to roll into next month.`;
+    motivation = `Strong payday so far. ${formatINR(carryToNextMonth)} is on track to roll into the next salary cycle.`;
   } else if (remaining > 0) {
-    motivation = `${formatINR(remaining)} still in this month's pot. Every rupee you don't spend becomes next month's head start.`;
+    motivation = `${formatINR(remaining)} still in this payday’s pot. Every rupee you don't spend becomes the next cycle’s head start.`;
   } else if (available > 0) {
-    motivation = "This month's pot is used up. Pause extra spending so next month can start with savings, not a hole.";
+    motivation = "This payday’s pot is used up. Pause extra spending so the next salary can start with savings, not a hole.";
   }
 
   return {

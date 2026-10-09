@@ -1,5 +1,25 @@
 export type WeekStartDay = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
+export const APP_TIMEZONE = "Asia/Kolkata";
+
+function indiaCalendarParts(now: Date): { year: string; month: string; day: string; hour: string } {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: APP_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(now);
+  const pick = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? "";
+  return {
+    year: pick("year"),
+    month: pick("month"),
+    day: pick("day"),
+    hour: pick("hour"),
+  };
+}
+
 export function toISODate(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -36,7 +56,12 @@ export function isISODate(value: string): boolean {
 }
 
 export function todayISO(now: Date): string {
-  return toISODate(now);
+  const { year, month, day } = indiaCalendarParts(now);
+  return `${year}-${month}-${day}`;
+}
+
+export function hourInIndia(now: Date): number {
+  return Number(indiaCalendarParts(now).hour);
 }
 
 export function toYearMonth(date: Date | string): string {
@@ -130,33 +155,45 @@ export function eachDay(start: string, end: string): string[] {
   return days;
 }
 
+function calendarNoonUTC(isoDate: string): Date {
+  const { year, month, day } = isoDate.length === 7
+    ? { year: Number(isoDate.slice(0, 4)), month: Number(isoDate.slice(5, 7)), day: 1 }
+    : {
+        year: Number(isoDate.slice(0, 4)),
+        month: Number(isoDate.slice(5, 7)),
+        day: Number(isoDate.slice(8, 10)),
+      };
+  return new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+}
+
 export function formatMonthLabel(yearMonth: string): string {
-  const { year, month } = parseYearMonth(yearMonth);
-  return new Date(year, month - 1, 1).toLocaleDateString("en-IN", {
+  return calendarNoonUTC(`${yearMonth}-01`).toLocaleDateString("en-IN", {
     month: "long",
     year: "numeric",
+    timeZone: APP_TIMEZONE,
   });
 }
 
 export function formatDayLabel(isoDate: string): string {
-  return parseISODate(isoDate).toLocaleDateString("en-IN", {
+  return calendarNoonUTC(isoDate).toLocaleDateString("en-IN", {
     weekday: "short",
     day: "numeric",
     month: "short",
+    timeZone: APP_TIMEZONE,
   });
 }
 
 export function formatWeekRangeLabel(start: string, end: string): string {
-  const startDate = parseISODate(start);
-  const endDate = parseISODate(end);
-  const startText = startDate.toLocaleDateString("en-IN", {
+  const startText = calendarNoonUTC(start).toLocaleDateString("en-IN", {
     day: "numeric",
     month: "short",
+    timeZone: APP_TIMEZONE,
   });
-  const endText = endDate.toLocaleDateString("en-IN", {
+  const endText = calendarNoonUTC(end).toLocaleDateString("en-IN", {
     day: "numeric",
     month: "short",
     year: "numeric",
+    timeZone: APP_TIMEZONE,
   });
   return `${startText} – ${endText}`;
 }
@@ -199,6 +236,43 @@ export function payCycleForDate(dates: string[], date: string): PayCycle | null 
   const start = sorted.find((value) => toYearMonth(value) === startMonth) ?? latest;
   const next = sorted.find((value) => toYearMonth(value) > startMonth) ?? null;
   return { start, end: next ? toISODate(addDays(next, -1)) : null };
+}
+
+export function payCycleForMonth(dates: string[], yearMonth: string): PayCycle | null {
+  const firstInMonth = [...new Set(dates)].sort().find((value) => toYearMonth(value) === yearMonth);
+  if (!firstInMonth) return null;
+  return payCycleForDate(dates, firstInMonth);
+}
+
+export function currentCycleMonth(dates: string[], today: string): string {
+  const cycle = payCycleForDate(dates, today);
+  return cycle ? toYearMonth(cycle.start) : today.slice(0, 7);
+}
+
+export function yearMonthForIncomeDate(
+  dates: string[],
+  occurredOn: string,
+  isSalary: boolean,
+  fallbackMonth: string,
+): string {
+  const withNew = isSalary ? [...new Set([...dates, occurredOn])].sort() : dates;
+  const cycle = payCycleForDate(withNew, occurredOn);
+  if (cycle) return toYearMonth(cycle.start);
+  return occurredOn.startsWith(fallbackMonth) ? fallbackMonth : occurredOn.slice(0, 7);
+}
+
+export function typicalCycleEnd(cycleStart: string): string {
+  return toISODate(addDays(cycleStart, 29));
+}
+
+export function cycleSpendEnd(cycle: PayCycle, today: string): string {
+  if (cycle.end) return cycle.end;
+  return maxISODate(today, toISODate(addDays(cycle.start, 62)));
+}
+
+export function formatCycleLabel(start: string, end: string | null): string {
+  if (!end) return `From ${formatDayLabel(start)}`;
+  return formatWeekRangeLabel(start, end);
 }
 
 export function cycleHorizon(cycle: PayCycle, today: string): string {

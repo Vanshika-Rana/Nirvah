@@ -13,7 +13,7 @@ export type WeeklyAvailability = {
   spentThisWeek: number;
   remainingVsWeeklyTarget: number;
   remainingMonthly: number;
-  remainingDaysInMonth: number;
+  remainingDaysInCycle: number;
   remainingDaysInWeek: number;
   availableThisWeek: number;
   suggestedDaily: number;
@@ -49,26 +49,28 @@ export function computeWeeklyAvailability(input: {
   monthToDatePersonal: number;
   today: string;
   weekEnd: string;
-  monthEnd: string;
+  cycleEnd: string;
+  paceEnd?: string;
 }): WeeklyAvailability {
   const remainingMonthly = roundMoney(input.personalLimit - input.monthToDatePersonal);
-  const remainingDaysInMonth = Math.max(0, diffDays(input.today, input.monthEnd) + 1);
-  const cappedWeekEnd = minISODate(input.weekEnd, input.monthEnd);
+  const paceEnd = input.paceEnd ?? input.cycleEnd;
+  const remainingDaysInCycle = Math.max(0, diffDays(input.today, paceEnd) + 1);
+  const cappedWeekEnd = minISODate(input.weekEnd, input.cycleEnd);
   const remainingDaysInWeek = Math.max(0, diffDays(input.today, cappedWeekEnd) + 1);
   const remainingVsWeeklyTarget = roundMoney(input.weeklyTarget - input.spentThisWeek);
   const availableThisWeek = roundMoney(
     Math.max(0, Math.min(remainingVsWeeklyTarget, remainingMonthly)),
   );
   const suggestedDaily =
-    remainingDaysInMonth > 0 ? roundMoney(Math.max(0, remainingMonthly) / remainingDaysInMonth) : 0;
+    remainingDaysInCycle > 0 ? roundMoney(Math.max(0, remainingMonthly) / remainingDaysInCycle) : 0;
   const monthlyCapApplies = remainingMonthly < Math.max(remainingVsWeeklyTarget, 0);
 
   let warning: string | null = null;
   if (remainingMonthly <= 0) {
     warning =
-      "This month's remaining money is used up. The monthly pot takes priority over the weekly target.";
+      "This payday’s remaining money is used up. The leftover pot takes priority over the weekly target.";
   } else if (monthlyCapApplies) {
-    warning = `You have ${formatINR(Math.max(0, remainingMonthly))} left this month. That leftover takes priority over the usual weekly target.`;
+    warning = `You have ${formatINR(Math.max(0, remainingMonthly))} left this payday. That leftover takes priority over the usual weekly target.`;
   }
 
   return {
@@ -76,7 +78,7 @@ export function computeWeeklyAvailability(input: {
     spentThisWeek: roundMoney(input.spentThisWeek),
     remainingVsWeeklyTarget,
     remainingMonthly,
-    remainingDaysInMonth,
+    remainingDaysInCycle,
     remainingDaysInWeek,
     availableThisWeek,
     suggestedDaily,

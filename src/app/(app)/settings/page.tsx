@@ -5,12 +5,13 @@ import { MonthSelector } from "@/components/month-selector";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  currentYearMonth,
   ensureMonthBudget,
   getAccounts,
   getProfile,
+  getSalaryIncomes,
 } from "@/lib/data";
 import { isSupabaseConfigured } from "@/lib/env";
+import { currentCycleMonth, salaryDates, todayISO } from "@/lib/finance/dates";
 import { requestNow } from "@/lib/request-now";
 
 export default function SettingsPage({
@@ -31,10 +32,13 @@ async function Settings({
   searchParams: Promise<{ month?: string }>;
 }) {
   const params = await searchParams;
-  const month = params.month ?? currentYearMonth(await requestNow());
+  const now = await requestNow();
   if (!isSupabaseConfigured()) {
     return <p className="text-sm text-muted">Configure Supabase to manage budgets.</p>;
   }
+  const salaries = await getSalaryIncomes();
+  const dates = salaryDates(salaries);
+  const month = params.month ?? currentCycleMonth(dates, todayISO(now));
   const [{ budget, envelopes }, accounts, profile] = await Promise.all([
     ensureMonthBudget(month),
     getAccounts(),
@@ -54,7 +58,7 @@ async function Settings({
           </Button>
         </form>
       </div>
-      <MonthSelector month={month} path="/settings" />
+      <MonthSelector month={month} path="/settings" salaryDates={dates} />
       <SettingsForm
         month={month}
         budget={budget}

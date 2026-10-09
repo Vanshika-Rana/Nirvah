@@ -2,9 +2,20 @@ import { Suspense } from "react";
 import { HistoryClient } from "@/components/history-client";
 import { MonthSelector } from "@/components/month-selector";
 import { Skeleton } from "@/components/ui/skeleton";
-import { currentYearMonth, getAccounts, getCategories, getHistory, getSalaryIncomes } from "@/lib/data";
+import { getAccounts, getCategories, getHistory, getSalaryIncomes } from "@/lib/data";
 import { isSupabaseConfigured } from "@/lib/env";
-import { cycleHorizon, maxISODate, payCycleForDate, paydayWeekContaining, salaryDates, todayISO, toYearMonth } from "@/lib/finance/dates";
+import {
+  currentCycleMonth,
+  cycleHorizon,
+  cycleSpendEnd,
+  maxISODate,
+  payCycleForDate,
+  payCycleForMonth,
+  paydayWeekContaining,
+  salaryDates,
+  todayISO,
+  toYearMonth,
+} from "@/lib/finance/dates";
 import { requestNow } from "@/lib/request-now";
 
 export default function HistoryPage({
@@ -30,9 +41,11 @@ async function History({
   const params = await searchParams;
   const now = await requestNow();
   const today = todayISO(now);
-  const month = params.month ?? (params.week ? toYearMonth(params.week) : currentYearMonth(now));
-  const salaries = params.week ? await getSalaryIncomes() : [];
-  const cycle = params.week ? payCycleForDate(salaryDates(salaries), params.week) : null;
+  const salaries = await getSalaryIncomes();
+  const dates = salaryDates(salaries);
+  const weekCycle = params.week ? payCycleForDate(dates, params.week) : null;
+  const month = params.month ?? (weekCycle ? toYearMonth(weekCycle.start) : currentCycleMonth(dates, today));
+  const cycle = weekCycle ?? payCycleForMonth(dates, month);
   const lastDay = cycle ? maxISODate(cycleHorizon(cycle, today), cycleHorizon(cycle, params.week ?? today)) : null;
   const week =
     params.week && cycle && lastDay
@@ -40,11 +53,16 @@ async function History({
       : params.week
         ? { start: params.week, end: params.week }
         : null;
+  const range = cycle
+    ? { start: cycle.start, end: cycleSpendEnd(cycle, today) }
+    : null;
   const [accounts, categories, history] = await Promise.all([
     getAccounts(),
     getCategories(),
     getHistory({
-      month: week ? undefined : month,
+      month: week || range ? undefined : month,
+      from: week ? undefined : range?.start,
+      to: week ? undefined : range?.end,
       weekStart: week?.start,
       weekEnd: week?.end,
       categoryId: params.category,
@@ -61,7 +79,7 @@ async function History({
         <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">History</h1>
         <p className="text-sm text-muted">Edit a row if you made a mistake.</p>
       </div>
-      <MonthSelector month={month} path="/history" />
+      <MonthSelector month={month} path="/history" salaryDates={dates} />
       <HistoryClient
         transactions={history.transactions}
         accounts={accounts}

@@ -2,19 +2,35 @@ import { describe, expect, it } from "vitest";
 import {
   addMonths,
   adjacentPaydayWeek,
+  currentCycleMonth,
   endOfWeek,
   firstSalaryDate,
+  formatDayLabel,
   monthRange,
   parseISODate,
   payCycleForDate,
   paydayWeekContaining,
   paydayWeeks,
   startOfWeek,
+  todayISO,
   toISODate,
   toYearMonth,
   weekRange,
+  yearMonthForIncomeDate,
 } from "@/lib/finance/dates";
 import { weekTarget } from "@/lib/finance/weekly";
+
+describe("India calendar dates", () => {
+  it("uses Asia/Kolkata, so late UTC evening is already the next Indian day", () => {
+    const utcEvening = new Date(Date.UTC(2026, 9, 8, 20, 0, 0));
+    expect(todayISO(utcEvening)).toBe("2026-10-09");
+  });
+
+  it("labels a stored YYYY-MM-DD without shifting a day", () => {
+    expect(formatDayLabel("2026-10-09")).toContain("9");
+    expect(formatDayLabel("2026-10-09")).toContain("Oct");
+  });
+});
 
 describe("month boundaries", () => {
   it("uses the first and last calendar day of the month", () => {
@@ -54,6 +70,19 @@ describe("payday weeks run until the next month's salary", () => {
       start: "2026-10-09",
       end: null,
     });
+  });
+
+  it("keeps 5 November in the 9 October payday until 12 November salary", () => {
+    expect(payCycleForDate(["2026-10-09", "2026-11-12"], "2026-11-05")).toEqual({
+      start: "2026-10-09",
+      end: "2026-11-11",
+    });
+    expect(currentCycleMonth(["2026-10-09", "2026-11-12"], "2026-11-05")).toBe("2026-10");
+  });
+
+  it("stores extra income on the payday that contains it, and next salary on the new payday", () => {
+    expect(yearMonthForIncomeDate(["2026-10-09"], "2026-11-03", false, "2026-10")).toBe("2026-10");
+    expect(yearMonthForIncomeDate(["2026-10-09"], "2026-11-12", true, "2026-10")).toBe("2026-11");
   });
 
   it("does not let a second salary in the same month end the cycle", () => {
