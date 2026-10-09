@@ -65,7 +65,7 @@ export function AddIncomeCard({
       <div>
         <h2 className="text-base font-semibold">Money received this month</h2>
         <p className="text-sm text-muted">
-          Add salary on the day it arrived. Weeks start from that date. Extra money does not move week 1.
+          Add salary on the day it arrived. Weeks start then and keep going until next month’s salary. Extra money does not move week 1.
         </p>
       </div>
       {defaultSalary > 0 ? (

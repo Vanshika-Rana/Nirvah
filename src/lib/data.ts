@@ -140,6 +140,21 @@ export async function getIncomes(yearMonth: string): Promise<Income[]> {
   return ((data ?? []) as Income[]).map(mapIncome);
 }
 
+export async function getSalaryIncomes(): Promise<Income[]> {
+  const { supabase, user } = await getAuthContext();
+  const { data, error } = await supabase
+    .from("incomes")
+    .select("*")
+    .eq("user_id", user.id)
+    .eq("is_salary", true)
+    .order("occurred_on");
+  if (error) {
+    if (isMissingRelation(error)) return [];
+    throw error;
+  }
+  return ((data ?? []) as Income[]).map(mapIncome);
+}
+
 export async function getEnvelopes(yearMonth: string): Promise<Envelope[]> {
   const { supabase, user } = await getAuthContext();
   const { data, error } = await supabase

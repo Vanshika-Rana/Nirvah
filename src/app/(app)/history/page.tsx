@@ -2,9 +2,9 @@ import { Suspense } from "react";
 import { HistoryClient } from "@/components/history-client";
 import { MonthSelector } from "@/components/month-selector";
 import { Skeleton } from "@/components/ui/skeleton";
-import { currentYearMonth, getAccounts, getCategories, getHistory, getIncomes } from "@/lib/data";
+import { currentYearMonth, getAccounts, getCategories, getHistory, getSalaryIncomes } from "@/lib/data";
 import { isSupabaseConfigured } from "@/lib/env";
-import { firstSalaryDate, monthRange, paydayWeekContaining, toYearMonth } from "@/lib/finance/dates";
+import { cycleHorizon, maxISODate, payCycleForDate, paydayWeekContaining, salaryDates, todayISO, toYearMonth } from "@/lib/finance/dates";
 import { requestNow } from "@/lib/request-now";
 
 export default function HistoryPage({
@@ -28,14 +28,15 @@ async function History({
     return <p className="text-sm text-muted">Configure Supabase to load history.</p>;
   }
   const params = await searchParams;
-  const month = params.month ?? (params.week ? toYearMonth(params.week) : currentYearMonth(await requestNow()));
-  const weekMonth = params.week ? toYearMonth(params.week) : month;
-  const incomes = params.week ? await getIncomes(weekMonth) : [];
-  const salaryDate = firstSalaryDate(incomes);
-  const monthDates = monthRange(weekMonth);
+  const now = await requestNow();
+  const today = todayISO(now);
+  const month = params.month ?? (params.week ? toYearMonth(params.week) : currentYearMonth(now));
+  const salaries = params.week ? await getSalaryIncomes() : [];
+  const cycle = params.week ? payCycleForDate(salaryDates(salaries), params.week) : null;
+  const lastDay = cycle ? maxISODate(cycleHorizon(cycle, today), cycleHorizon(cycle, params.week ?? today)) : null;
   const week =
-    params.week && salaryDate
-      ? paydayWeekContaining(params.week, salaryDate, monthDates.end)
+    params.week && cycle && lastDay
+      ? paydayWeekContaining(params.week, cycle.start, lastDay)
       : params.week
         ? { start: params.week, end: params.week }
         : null;

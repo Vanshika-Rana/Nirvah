@@ -8,12 +8,24 @@ import {
   getCategories,
   getProfile,
   getRecentTransactions,
+  getSalaryIncomes,
   getTransactionsInRange,
   isMonthPlanSchemaReady,
   lookbackStart,
 } from "@/lib/data";
 import { isSupabaseConfigured } from "@/lib/env";
-import { firstSalaryDate, greetingForHour, monthRange, paydayWeekContaining, paydayWeeks, todayISO } from "@/lib/finance/dates";
+import {
+  cycleHorizon,
+  greetingForHour,
+  maxISODate,
+  minISODate,
+  monthRange,
+  payCycleForDate,
+  paydayWeekContaining,
+  paydayWeeks,
+  salaryDates,
+  todayISO,
+} from "@/lib/finance/dates";
 import { summarizeMonthPlan } from "@/lib/finance/month-plan";
 import { weekSummaries } from "@/lib/finance/weekly";
 import { requestNow } from "@/lib/request-now";
@@ -44,15 +56,22 @@ async function Dashboard({
 
   const today = todayISO(now);
   const profile = await getProfile();
-  const [schemaReady, { budget, envelopes, incomes }, accounts, categories, recent] = await Promise.all([
+  const [schemaReady, { budget, envelopes, incomes }, accounts, categories, recent, salaries] = await Promise.all([
     isMonthPlanSchemaReady(),
     ensureMonthBudget(month),
     getAccounts(),
     getCategories(),
     getRecentTransactions(),
+    getSalaryIncomes(),
   ]);
   const range = monthRange(month);
-  const transactions = await getTransactionsInRange(lookbackStart(month, now), range.end);
+  const thisMonth = currentYearMonth(now);
+  const anchor = month === thisMonth ? today : today < range.start ? range.start : range.end;
+  const cycle = payCycleForDate(salaryDates(salaries), anchor);
+  const horizon = cycle ? cycleHorizon(cycle, today) : range.end;
+  const txStart = cycle ? minISODate(lookbackStart(month, now), cycle.start) : lookbackStart(month, now);
+  const txEnd = cycle ? maxISODate(range.end, horizon) : range.end;
+  const transactions = await getTransactionsInRange(txStart, txEnd);
   const monthTransactions = transactions.filter(
     (transaction) => transaction.occurred_on >= range.start && transaction.occurred_on <= range.end,
   );
@@ -63,10 +82,10 @@ async function Dashboard({
     transactions: monthTransactions,
     categories,
   });
-  const salaryDate = firstSalaryDate(incomes);
-  const weeks = salaryDate ? paydayWeeks(salaryDate, range.end) : [];
+  const salaryDate = cycle?.start ?? null;
+  const weeks = cycle ? paydayWeeks(cycle.start, horizon) : [];
   const weekBars = weekSummaries(transactions, categories, budget, weeks);
-  const currentWeek = salaryDate ? paydayWeekContaining(today, salaryDate, range.end) : null;
+  const currentWeek = cycle ? paydayWeekContaining(today, cycle.start, horizon) : null;
   const weeklySpent = currentWeek
     ? (weekBars.find((week) => week.start === currentWeek.start)?.spent ?? 0)
     : 0;

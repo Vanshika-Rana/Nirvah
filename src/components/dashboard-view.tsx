@@ -49,7 +49,7 @@ export function DashboardView({
   const currentBar = weekBars.find((week) => today >= week.start && today <= week.end);
   const currentTarget = currentBar?.target ?? weeklyTarget;
   const weeklyLeft = Math.max(0, currentTarget - weeklySpent);
-  const needsIncome = !salaryDate;
+  const needsIncome = !incomes.some((row) => row.is_salary);
   const weeklyPercent =
     currentTarget > 0 ? Math.min(100, Math.round((weeklySpent / currentTarget) * 100)) : 0;
 
@@ -135,7 +135,7 @@ export function DashboardView({
           </CardHeader>
           {!salaryDate ? (
             <p className="mb-3 text-sm text-muted">
-              Add this month’s salary above. Weeks start from that day, then every 7 days until month-end.
+              Add this month’s salary above. Weeks run from that payday until you log the next month’s salary.
             </p>
           ) : weeklyTarget > 0 ? (
             <div className="mb-3">
@@ -145,7 +145,7 @@ export function DashboardView({
                 </span>
                 <span className="font-medium">{weeklyPercent}%</span>
               </div>
-              <p className="mb-1 text-xs text-muted">Started {formatDayLabel(salaryDate)}</p>
+              <p className="mb-1 text-xs text-muted">Payday {formatDayLabel(salaryDate)} · until next month’s salary</p>
               <div className="h-2.5 overflow-hidden rounded-full bg-[#efe8de]">
                 <div
                   className="h-full rounded-full bg-accent"

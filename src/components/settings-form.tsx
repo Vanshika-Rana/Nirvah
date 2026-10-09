@@ -58,7 +58,7 @@ export function SettingsForm({
         <CardHeader>
           <CardTitle>Weekly target</CardTitle>
         </CardHeader>
-        <p className="mb-3 text-sm text-muted">Optional. Counts in 7-day blocks from payday. A short last week before month-end gets a smaller slice. The month’s leftover still wins if it’s lower.</p>
+        <p className="mb-3 text-sm text-muted">Optional. Counts in 7-day blocks from payday until you log next month’s salary. A leftover stub at the end of that cycle gets a smaller slice. Calendar leftover still rolls month to month.</p>
         <div className="flex gap-2">
           <Input className="min-w-0 flex-1" inputMode="decimal" value={weekly} onChange={(event) => setWeekly(event.target.value)} />
           <Button className="shrink-0"
@@ -136,7 +136,7 @@ export function SettingsForm({
           <CardTitle>Weekly cycle</CardTitle>
         </CardHeader>
         <p className="text-sm text-muted">
-          Weeks start on the day you log this month’s salary, then run every 7 days. The last week stops at month-end. Next month starts again from the next payday.
+          Weeks start the day you log salary and continue payday to payday. Logging next month’s salary begins a new cycle. Monthly leftover still closes on the calendar month.
         </p>
       </Card>
 

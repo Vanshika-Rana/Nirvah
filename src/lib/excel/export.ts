@@ -8,10 +8,12 @@ import type {
   Transaction,
 } from "@/lib/types";
 import {
-  firstSalaryDate,
+  cycleHorizon,
   formatMonthLabel,
   monthRange,
+  payCycleForDate,
   paydayWeeks,
+  salaryDates,
   toISODate,
   type WeekStartDay,
 } from "@/lib/finance/dates";
@@ -97,14 +99,16 @@ export function buildWorkbook(payload: ExportPayload): XLSX.WorkBook {
   const monthlySummary = payload.budgets.map((budget) => {
     const monthKey = budget.year_month.slice(0, 7);
     const month = monthRange(monthKey);
-    const monthIncomes = (payload.incomes ?? []).filter((row) => row.year_month.slice(0, 7) === monthKey);
+    const dates = salaryDates(payload.incomes ?? []);
+    const cycle = payCycleForDate(dates, month.end);
     const summary = summarizeDashboard({
       budget: { ...budget, year_month: monthKey },
       transactions: payload.transactions,
       categories: payload.categories,
       today: month.end,
       weekStartsOn,
-      cycleStart: firstSalaryDate(monthIncomes),
+      cycleStart: cycle?.start,
+      cycleEnd: cycle ? cycleHorizon(cycle, month.end) : null,
     });
     return {
       month: formatMonthLabel(budget.year_month.slice(0, 7)),
@@ -129,17 +133,18 @@ export function buildWorkbook(payload: ExportPayload): XLSX.WorkBook {
     personal_spent: number;
     weekly_target: number;
   }[] = [];
-  const monthKeys = new Set([
-    ...payload.budgets.map((budget) => budget.year_month.slice(0, 7)),
-    ...(payload.incomes ?? []).map((row) => row.year_month.slice(0, 7)),
-  ]);
-  for (const monthKey of [...monthKeys].sort()) {
-    const monthIncomes = (payload.incomes ?? []).filter((row) => row.year_month.slice(0, 7) === monthKey);
-    const salaryDate = firstSalaryDate(monthIncomes);
-    if (!salaryDate) continue;
-    const month = monthRange(monthKey);
+  const dates = salaryDates(payload.incomes ?? []);
+  const seen = new Set<string>();
+  const lastTransaction = [...payload.transactions].sort((a, b) => a.occurred_on.localeCompare(b.occurred_on)).at(-1)
+    ?.occurred_on;
+  for (const date of dates) {
+    const cycle = payCycleForDate(dates, date);
+    if (!cycle || seen.has(cycle.start)) continue;
+    seen.add(cycle.start);
+    const lastDay = cycle.end ?? lastTransaction ?? cycle.start;
+    const monthKey = cycle.start.slice(0, 7);
     const budget = payload.budgets.find((item) => item.year_month.slice(0, 7) === monthKey);
-    for (const week of paydayWeeks(salaryDate, month.end)) {
+    for (const week of paydayWeeks(cycle.start, lastDay)) {
       weeklySummary.push({
         week_start: week.start,
         week_end: week.end,

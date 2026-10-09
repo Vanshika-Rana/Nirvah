@@ -6,6 +6,7 @@ import {
   firstSalaryDate,
   monthRange,
   parseISODate,
+  payCycleForDate,
   paydayWeekContaining,
   paydayWeeks,
   startOfWeek,
@@ -34,26 +35,40 @@ describe("month boundaries", () => {
   });
 });
 
-describe("payday weeks start on the salary date and clip at month-end", () => {
-  it("builds 7-day weeks from a Friday payday", () => {
-    expect(paydayWeeks("2026-10-09", "2026-10-31")).toEqual([
+describe("payday weeks run until the next month's salary", () => {
+  it("keeps full 7-day weeks across month-end until the next payday", () => {
+    expect(paydayWeeks("2026-10-09", "2026-11-05")).toEqual([
       { start: "2026-10-09", end: "2026-10-15" },
       { start: "2026-10-16", end: "2026-10-22" },
       { start: "2026-10-23", end: "2026-10-29" },
-      { start: "2026-10-30", end: "2026-10-31" },
+      { start: "2026-10-30", end: "2026-11-05" },
     ]);
   });
 
-  it("finds the week that contains a given day", () => {
-    expect(paydayWeekContaining("2026-10-09", "2026-10-09", "2026-10-31")).toEqual({
+  it("opens a cycle on this payday and closes the day before next month's salary", () => {
+    expect(payCycleForDate(["2026-10-09", "2026-11-06"], "2026-10-20")).toEqual({
       start: "2026-10-09",
-      end: "2026-10-15",
+      end: "2026-11-05",
     });
-    expect(paydayWeekContaining("2026-10-31", "2026-10-09", "2026-10-31")).toEqual({
+    expect(payCycleForDate(["2026-10-09"], "2026-11-03")).toEqual({
+      start: "2026-10-09",
+      end: null,
+    });
+  });
+
+  it("does not let a second salary in the same month end the cycle", () => {
+    expect(payCycleForDate(["2026-10-09", "2026-10-20", "2026-11-06"], "2026-10-22")).toEqual({
+      start: "2026-10-09",
+      end: "2026-11-05",
+    });
+  });
+
+  it("finds the week that contains a given day", () => {
+    expect(paydayWeekContaining("2026-11-03", "2026-10-09", "2026-11-05")).toEqual({
       start: "2026-10-30",
-      end: "2026-10-31",
+      end: "2026-11-05",
     });
-    expect(paydayWeekContaining("2026-10-08", "2026-10-09", "2026-10-31")).toBeNull();
+    expect(paydayWeekContaining("2026-10-08", "2026-10-09", "2026-11-05")).toBeNull();
   });
 
   it("uses the earliest salary date as day one", () => {
@@ -66,11 +81,13 @@ describe("payday weeks start on the salary date and clip at month-end", () => {
     ).toBe("2026-10-09");
   });
 
-  it("steps back to the previous month's last clipped week", () => {
-    const previous = adjacentPaydayWeek({ start: "2026-10-09", end: "2026-10-15" }, -1, (month) =>
-      month === "2026-10" ? "2026-10-09" : month === "2026-09" ? "2026-09-11" : null,
+  it("steps back one 7-day week inside the same cycle", () => {
+    const previous = adjacentPaydayWeek(
+      { start: "2026-10-16", end: "2026-10-22" },
+      -1,
+      { start: "2026-10-09", end: "2026-11-05" },
     );
-    expect(previous).toEqual({ start: "2026-09-25", end: "2026-09-30" });
+    expect(previous).toEqual({ start: "2026-10-09", end: "2026-10-15" });
   });
 });
 

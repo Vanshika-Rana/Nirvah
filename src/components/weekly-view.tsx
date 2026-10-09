@@ -95,9 +95,9 @@ export function WeeklyView({
               {availability.weeklyTarget > 0 ? ` of ${formatINR(availability.weeklyTarget)}` : ". Set a weekly target on Home."}
             </p>
             {salaryDate ? (
-              <p className="mt-1 text-xs text-muted">Week 1 started {formatDayLabel(salaryDate)}</p>
+              <p className="mt-1 text-xs text-muted">Payday {formatDayLabel(salaryDate)} · until next month’s salary</p>
             ) : (
-              <p className="mt-1 text-xs text-muted">Log this month’s salary on Home to start weekly counting.</p>
+              <p className="mt-1 text-xs text-muted">Log salary on Home. Weeks then run until the next month’s salary.</p>
             )}
           </div>
         </div>

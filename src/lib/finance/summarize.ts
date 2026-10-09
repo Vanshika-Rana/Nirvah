@@ -127,10 +127,11 @@ export function summarizeDashboard(input: {
   today: string;
   weekStartsOn: WeekStartDay;
   cycleStart?: string | null;
+  cycleEnd?: string | null;
 }): DashboardSummary {
   const month = monthRange(input.budget.year_month);
   const week = input.cycleStart
-    ? paydayWeekContaining(input.today, input.cycleStart, month.end) ?? {
+    ? paydayWeekContaining(input.today, input.cycleStart, input.cycleEnd ?? input.today) ?? {
         start: input.today,
         end: input.today,
       }
