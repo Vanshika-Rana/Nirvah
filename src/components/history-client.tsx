@@ -39,8 +39,9 @@ export function HistoryClient({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-2 lg:grid-cols-3">
         <Input
+          className="col-span-2"
           defaultValue={params.get("q") ?? ""}
           placeholder="Search descriptions"
           onBlur={(event) => setFilter("q", event.target.value)}
@@ -85,13 +86,15 @@ export function HistoryClient({
               <li key={transaction.id}>
                 <Link href={`/history/${transaction.id}`} className="block rounded-2xl border border-border bg-card p-4">
                   <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-medium">{transaction.description || categoryById(categories, transaction.category_id)?.name || TRANSACTION_TYPE_LABELS[transaction.type]}</p>
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{transaction.description || categoryById(categories, transaction.category_id)?.name || TRANSACTION_TYPE_LABELS[transaction.type]}</p>
                       <p className="text-xs text-muted">
-                        {formatDayLabel(transaction.occurred_on)} · {TRANSACTION_TYPE_LABELS[transaction.type]}
+                        {formatDayLabel(transaction.occurred_on)} ·{" "}
+                        {accounts.find((account) => account.id === transaction.account_id)?.name ??
+                          TRANSACTION_TYPE_LABELS[transaction.type]}
                       </p>
                     </div>
-                    <p className="font-semibold">{formatINR(transaction.amount)}</p>
+                    <p className="shrink-0 font-semibold tabular-nums">{formatINR(transaction.amount)}</p>
                   </div>
                 </Link>
               </li>

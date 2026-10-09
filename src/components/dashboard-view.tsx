@@ -49,15 +49,15 @@ export function DashboardView({
     weeklyTarget > 0 ? Math.min(100, Math.round((weeklySpent / weeklyTarget) * 100)) : 0;
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="flex flex-col gap-4 md:gap-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
         <div>
           <p className="text-sm text-muted">{greeting}</p>
-          <h1 className="text-2xl font-semibold tracking-tight">This month</h1>
+          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">This month</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full items-center gap-2 sm:w-auto">
           <MonthSelector month={month} />
-          <Button asChild size="lg">
+          <Button asChild size="lg" className="hidden shrink-0 md:inline-flex">
             <Link href="/add">
               <Plus /> Add expense
             </Link>
@@ -78,7 +78,7 @@ export function DashboardView({
             />
           </div>
         ) : null}
-        <div className="mt-5 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+        <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-3 text-sm sm:mt-5 sm:grid-cols-4">
           <Stat label="From last month" value={plan.opening} />
           <Stat label="Added this month" value={plan.income} />
           <Stat label="Spent" value={plan.expenses} />
@@ -172,18 +172,18 @@ export function DashboardView({
           <ul className="divide-y divide-border">
             {recent.map((transaction) => (
               <li key={transaction.id} className="flex items-center justify-between gap-3 py-3">
-                <div>
-                  <p className="font-medium">
+                <div className="min-w-0">
+                  <p className="truncate font-medium">
                     {transaction.description ||
                       categoryById(categories, transaction.category_id)?.name ||
                       TRANSACTION_TYPE_LABELS[transaction.type]}
                   </p>
-                  <p className="text-xs text-muted">
+                  <p className="truncate text-xs text-muted">
                     {formatDayLabel(transaction.occurred_on)} · {PAYMENT_METHOD_LABELS[transaction.payment_method]} ·{" "}
                     {accounts.find((account) => account.id === transaction.account_id)?.name}
                   </p>
                 </div>
-                <p className="font-semibold">{formatINR(transaction.amount)}</p>
+                <p className="shrink-0 font-semibold tabular-nums">{formatINR(transaction.amount)}</p>
               </li>
             ))}
           </ul>
@@ -195,9 +195,9 @@ export function DashboardView({
 
 function Stat({ label, value, highlight = false }: { label: string; value: number; highlight?: boolean }) {
   return (
-    <div>
+    <div className="min-w-0">
       <p className="text-muted">{label}</p>
-      <p className={`font-semibold ${highlight ? "text-accent" : ""}`}>{formatINR(value)}</p>
+      <p className={`font-semibold tabular-nums ${highlight ? "text-accent" : ""}`}>{formatINR(value)}</p>
     </div>
   );
 }

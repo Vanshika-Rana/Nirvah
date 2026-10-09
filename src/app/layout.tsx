@@ -39,7 +39,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en" className={`${outfit.variable} h-full antialiased`}>
       <body className="min-h-full bg-background font-sans text-foreground">
         {children}
-        <Toaster position="top-center" richColors />
+        <Toaster position="top-center" richColors offset={{ top: "max(12px, env(safe-area-inset-top))" }} />
         <PwaRegister />
       </body>
     </html>

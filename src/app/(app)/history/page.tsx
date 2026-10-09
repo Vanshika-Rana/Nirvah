@@ -49,7 +49,7 @@ async function History({
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">History</h1>
+        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">History</h1>
         <p className="text-sm text-muted">Edit a row if you made a mistake.</p>
       </div>
       <MonthSelector month={month} path="/history" />

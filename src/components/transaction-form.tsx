@@ -231,7 +231,12 @@ export function TransactionForm({
         </Field>
       ) : null}
 
-      <Button type="submit" size="lg" disabled={pending} className="sticky bottom-20 md:bottom-0">
+      <Button
+        type="submit"
+        size="lg"
+        disabled={pending}
+        className="sticky bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-20 w-full shadow-[0_-10px_24px_rgba(246,241,234,0.95)] md:bottom-0"
+      >
         {pending ? "Saving…" : transaction ? "Save changes" : "Save expense"}
       </Button>
       {transaction ? (

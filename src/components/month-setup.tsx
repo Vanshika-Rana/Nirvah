@@ -62,7 +62,7 @@ export function AddIncomeCard({
         </p>
       </div>
       {defaultSalary > 0 ? (
-        <Button disabled={pending} onClick={() => save(defaultSalary, "Salary", true)}>
+        <Button className="w-full sm:w-auto" disabled={pending} onClick={() => save(defaultSalary, "Salary", true)}>
           {pending ? "Saving…" : `Add salary ${formatINR(defaultSalary)}`}
         </Button>
       ) : null}
@@ -256,12 +256,13 @@ export function WeeklyTargetField({
   return (
     <div className="flex gap-2">
       <Input
+        className="min-w-0 flex-1"
         inputMode="decimal"
         value={value}
         placeholder="Weekly spending target"
         onChange={(event) => setValue(event.target.value)}
       />
-      <Button
+      <Button className="shrink-0"
         disabled={pending}
         onClick={() =>
           startTransition(async () => {

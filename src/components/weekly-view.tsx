@@ -40,26 +40,26 @@ export function WeeklyView({
   const maxCategory = Math.max(1, ...categoryTotals.map((item) => item.amount));
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="flex flex-col gap-4 md:gap-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">This week</h1>
+          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">This week</h1>
           <p className="text-sm text-muted">{formatWeekRangeLabel(start, end)}</p>
         </div>
-        <div className="flex gap-2">
-          <Button asChild variant="secondary">
+        <div className="grid grid-cols-2 gap-2 sm:flex">
+          <Button asChild variant="secondary" className="w-full sm:w-auto">
             <Link href={`/weekly?week=${prevStart}`}>Previous</Link>
           </Button>
-          <Button asChild variant="secondary">
+          <Button asChild variant="secondary" className="w-full sm:w-auto">
             <Link href={`/weekly?week=${nextStart}`}>Next</Link>
           </Button>
         </div>
       </div>
 
       <Card className="bg-[linear-gradient(180deg,#fffcf7_0%,#f3faf7_100%)]">
-        <div className="flex items-center gap-5">
+        <div className="flex items-center gap-4 sm:gap-5">
           <div
-            className="relative size-28 shrink-0 rounded-full"
+            className="relative size-24 shrink-0 rounded-full sm:size-28"
             style={{
               background: `conic-gradient(#0f766e ${Math.max(0, percent) * 3.6}deg, #efe8de 0)`,
             }}
@@ -69,11 +69,11 @@ export function WeeklyView({
               <p className="text-[11px] text-muted">left</p>
             </div>
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-sm text-muted">
               {availability.weeklyTarget > 0 ? "Left of this week’s target" : "Spent this week"}
             </p>
-            <p className="text-3xl font-semibold tracking-tight">
+            <p className="text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl">
               {formatINR(availability.weeklyTarget > 0 ? kept : availability.spentThisWeek)}
             </p>
             <p className="mt-1 text-sm text-muted">
@@ -141,18 +141,18 @@ export function WeeklyView({
           <ul className="divide-y divide-border">
             {transactions.map((transaction) => (
               <li key={transaction.id} className="flex items-center justify-between gap-3 py-3">
-                <div>
-                  <p className="font-medium">
+                <div className="min-w-0">
+                  <p className="truncate font-medium">
                     {transaction.description || categoryById(categories, transaction.category_id)?.name || TRANSACTION_TYPE_LABELS[transaction.type]}
                   </p>
-                  <p className="text-xs text-muted">
+                  <p className="truncate text-xs text-muted">
                     {formatDayLabel(transaction.occurred_on)} · {accounts.find((account) => account.id === transaction.account_id)?.name}
                     {categoryById(categories, transaction.category_id) ? (
                       <Badge className="ml-2">{categoryById(categories, transaction.category_id)?.name}</Badge>
                     ) : null}
                   </p>
                 </div>
-                <Link href={`/history/${transaction.id}`} className="font-semibold text-accent">
+                <Link href={`/history/${transaction.id}`} className="shrink-0 font-semibold tabular-nums text-accent">
                   {formatINR(transaction.amount)}
                 </Link>
               </li>

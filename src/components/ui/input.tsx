@@ -4,7 +4,7 @@ export function Input({ className, ...props }: React.ComponentProps<"input">) {
   return (
     <input
       className={cn(
-        "h-12 w-full rounded-xl border border-border bg-white px-3 text-base text-foreground outline-none ring-ring placeholder:text-muted focus:ring-2",
+        "h-12 w-full min-w-0 rounded-xl border border-border bg-white px-3 text-base text-foreground outline-none ring-ring placeholder:text-muted focus:ring-2",
         className,
       )}
       {...props}
@@ -28,7 +28,7 @@ export function NativeSelect({ className, children, ...props }: React.ComponentP
   return (
     <select
       className={cn(
-        "h-12 w-full appearance-none rounded-xl border border-border bg-white px-3 text-base text-foreground outline-none ring-ring focus:ring-2",
+        "h-12 w-full min-w-0 appearance-none rounded-xl border border-border bg-white px-3 pr-9 text-base text-foreground outline-none ring-ring focus:ring-2",
         className,
       )}
       {...props}

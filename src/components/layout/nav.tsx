@@ -6,31 +6,49 @@ import { CalendarRange, History, Home, Plus, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
-  { href: "/", label: "Home", icon: Home },
-  { href: "/add", label: "Add expense", icon: Plus },
-  { href: "/weekly", label: "Weekly", icon: CalendarRange },
-  { href: "/history", label: "History", icon: History },
+  { href: "/", label: "Home", short: "Home", icon: Home },
+  { href: "/add", label: "Add expense", short: "Add", icon: Plus },
+  { href: "/weekly", label: "Weekly", short: "Week", icon: CalendarRange },
+  { href: "/history", label: "History", short: "History", icon: History },
 ];
+
+function isActive(pathname: string, href: string) {
+  if (href === "/") return pathname === "/";
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 export function BottomNav() {
   const pathname = usePathname();
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 pb-[max(0.4rem,env(safe-area-inset-bottom))] backdrop-blur md:hidden">
       <ul className="grid grid-cols-4">
         {items.map((item) => {
-          const active = pathname === item.href;
+          const active = isActive(pathname, item.href);
           const Icon = item.icon;
+          const isAdd = item.href === "/add";
           return (
             <li key={item.href}>
               <Link
                 href={item.href}
                 className={cn(
-                  "flex min-h-16 flex-col items-center justify-center gap-1 text-xs font-medium",
-                  active ? "text-accent" : "text-muted",
+                  "flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-medium",
+                  isAdd && "relative -top-2",
+                  active && !isAdd ? "text-accent" : "text-muted",
                 )}
               >
-                <Icon className="size-5" />
-                {item.label}
+                {isAdd ? (
+                  <span
+                    className={cn(
+                      "flex size-12 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-[0_8px_20px_rgba(15,118,110,0.35)]",
+                      active && "ring-2 ring-accent-soft",
+                    )}
+                  >
+                    <Icon className="size-6" />
+                  </span>
+                ) : (
+                  <Icon className="size-5" />
+                )}
+                {item.short}
               </Link>
             </li>
           );
@@ -50,7 +68,7 @@ export function Sidebar() {
       </div>
       <nav className="flex flex-1 flex-col gap-1">
         {items.map((item) => {
-          const active = pathname === item.href;
+          const active = isActive(pathname, item.href);
           const Icon = item.icon;
           return (
             <Link
@@ -70,7 +88,7 @@ export function Sidebar() {
           href="/settings"
           className={cn(
             "mt-auto flex h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium",
-            pathname === "/settings" ? "bg-accent-soft text-accent" : "text-foreground hover:bg-[#f3eee6]",
+            isActive(pathname, "/settings") ? "bg-accent-soft text-accent" : "text-foreground hover:bg-[#f3eee6]",
           )}
         >
           <Settings className="size-4" />

@@ -17,8 +17,8 @@ export default async function AddPage() {
   return (
     <div className="mx-auto max-w-md space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Add expense</h1>
-        <p className="mt-1 text-sm text-muted">Amount, spent from which account, what it was for.</p>
+        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Add expense</h1>
+        <p className="mt-1 text-sm text-muted">Amount, spent from, what for.</p>
       </div>
       {accounts.length === 0 ? <AddAccountCard /> : null}
       {envelopes.length === 0 ? <AddEnvelopeCard month={month} /> : null}

@@ -44,21 +44,21 @@ export function MoneyRing({
   const total = Math.max(spent + kept, 1);
   const percent = Math.round((kept / total) * 100);
   return (
-    <div className="flex items-center gap-5">
+    <div className="flex items-center gap-4 sm:gap-5">
       <div
-        className="relative size-36 shrink-0 rounded-full"
+        className="relative size-28 shrink-0 rounded-full sm:size-36"
         style={{
           background: `conic-gradient(#0f766e ${percent * 3.6}deg, #efe8de 0)`,
         }}
       >
-        <div className="absolute inset-3 flex flex-col items-center justify-center rounded-full bg-card">
-          <p className="text-2xl font-semibold tracking-tight">{percent}%</p>
+        <div className="absolute inset-2.5 flex flex-col items-center justify-center rounded-full bg-card sm:inset-3">
+          <p className="text-xl font-semibold tracking-tight sm:text-2xl">{percent}%</p>
           <p className="text-[11px] text-muted">still yours</p>
         </div>
       </div>
-      <div>
+      <div className="min-w-0">
         <p className="text-sm text-muted">{label}</p>
-        <p className="text-3xl font-semibold tracking-tight">{formatINR(kept)}</p>
+        <p className="text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl">{formatINR(kept)}</p>
         <p className="mt-1 text-sm text-muted">{formatINR(spent)} spent this month</p>
       </div>
     </div>
@@ -125,7 +125,7 @@ export function MoneyFlow({
             title={`Kept ${formatINR(kept)}`}
           />
         </div>
-        <div className="mt-1.5 flex justify-between text-xs">
+        <div className="mt-1.5 flex flex-wrap justify-between gap-x-3 gap-y-1 text-xs">
           <span className="text-muted">Spent {formatINR(spent)}</span>
           <span className="font-medium text-accent">Kept {formatINR(kept)} → next month</span>
         </div>
@@ -180,7 +180,7 @@ export function SpendPie({ data }: { data: { name: string; value: number }[] }) 
   const total = rows.reduce((sum, row) => sum + row.value, 0);
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-      <div className="h-48 w-full sm:w-56">
+      <div className="mx-auto h-44 w-full max-w-[14rem] sm:h-48 sm:w-56">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie data={rows} dataKey="value" nameKey="name" innerRadius={46} outerRadius={74} paddingAngle={2} stroke="none">
@@ -228,13 +228,7 @@ export function WeeklyBarChart({
         <BarChart data={rows} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
           <CartesianGrid vertical={false} stroke="#e7dfd4" />
           <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#6b635b" }} axisLine={false} tickLine={false} />
-          <YAxis
-            tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`}
-            tick={{ fontSize: 12, fill: "#6b635b" }}
-            axisLine={false}
-            tickLine={false}
-            width={32}
-          />
+          <YAxis hide />
           <Tooltip
             formatter={(value, name) => [formatINR(Number(value)), name === "spent" ? "Spent" : "Target"]}
             contentStyle={tooltipStyle}

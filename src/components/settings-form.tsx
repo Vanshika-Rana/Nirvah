@@ -40,8 +40,8 @@ export function SettingsForm({
         </CardHeader>
         <p className="mb-3 text-sm text-muted">Saved so next month you can add it in one tap. Extra income is added separately on Home.</p>
         <div className="flex gap-2">
-          <Input inputMode="decimal" value={salary} onChange={(event) => setSalary(event.target.value)} />
-          <Button
+          <Input className="min-w-0 flex-1" inputMode="decimal" value={salary} onChange={(event) => setSalary(event.target.value)} />
+          <Button className="shrink-0"
             disabled={pending}
             onClick={() =>
               startTransition(async () => {
@@ -62,8 +62,8 @@ export function SettingsForm({
         </CardHeader>
         <p className="mb-3 text-sm text-muted">Optional. A daily pace for spending envelopes. The month’s remaining money still wins if it’s lower.</p>
         <div className="flex gap-2">
-          <Input inputMode="decimal" value={weekly} onChange={(event) => setWeekly(event.target.value)} />
-          <Button
+          <Input className="min-w-0 flex-1" inputMode="decimal" value={weekly} onChange={(event) => setWeekly(event.target.value)} />
+          <Button className="shrink-0"
             disabled={pending}
             onClick={() =>
               startTransition(async () => {
@@ -85,7 +85,7 @@ export function SettingsForm({
         <p className="mb-3 text-sm text-muted">Edit amounts here. Next month copies these names so you are not starting from scratch.</p>
         <ul className="space-y-2">
           {envelopes.map((envelope) => (
-            <li key={envelope.id} className="grid grid-cols-[1fr_7rem_auto] items-center gap-2">
+            <li key={envelope.id} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_7rem_auto] sm:items-center">
               <Input
                 defaultValue={envelope.name}
                 onBlur={(event) =>
@@ -160,7 +160,7 @@ export function SettingsForm({
         <ul className="space-y-2">
           {accounts.map((account) => (
             <li key={account.id} className="flex items-center gap-2">
-              <Input
+              <Input className="min-w-0 flex-1"
                 defaultValue={account.name}
                 onBlur={(event) =>
                   startTransition(async () => {
@@ -183,7 +183,7 @@ export function SettingsForm({
           ))}
         </ul>
         <form
-          className="mt-3 flex gap-2"
+          className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_8.5rem_auto]"
           onSubmit={(event) => {
             event.preventDefault();
             const formEl = event.currentTarget;

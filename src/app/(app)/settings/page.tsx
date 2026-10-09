@@ -44,12 +44,14 @@ async function Settings({
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-          <p className="text-sm text-muted">Salary, weekly target, accounts. Split money on Home.</p>
+        <div className="min-w-0">
+          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Settings</h1>
+          <p className="text-sm text-muted">Salary, weekly target, accounts.</p>
         </div>
         <form action={signOut}>
-          <Button variant="secondary">Sign out</Button>
+          <Button variant="secondary" className="shrink-0">
+            Sign out
+          </Button>
         </form>
       </div>
       <MonthSelector month={month} path="/settings" />
