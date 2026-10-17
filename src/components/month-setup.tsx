@@ -3,15 +3,14 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { addIncome, assignIncomeAccount, deleteIncome, saveEnvelope, saveWeeklyTarget } from "@/actions/plan";
-import { AddAccountFields } from "@/components/home-accounts";
+import { addIncome, deleteIncome, saveEnvelope, saveWeeklyTarget } from "@/actions/plan";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field, Input, NativeSelect } from "@/components/ui/input";
 import { ENVELOPE_KIND_LABELS, type EnvelopeKind, type Income } from "@/lib/finance/month-plan";
 import { formatDayLabel, todayISO } from "@/lib/finance/dates";
 import { formatINR } from "@/lib/finance/money";
-import type { Account } from "@/lib/types";
+import Link from "next/link";
 
 function defaultIncomeDate(cycleStart: string | null, cycleEnd: string | null): string {
   const today = todayISO(new Date());
@@ -26,14 +25,12 @@ export function AddIncomeCard({
   cycleStart = null,
   cycleEnd = null,
   collapsed = false,
-  accounts = [],
 }: {
   month: string;
   defaultSalary: number;
   cycleStart?: string | null;
   cycleEnd?: string | null;
   collapsed?: boolean;
-  accounts?: Account[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -41,8 +38,6 @@ export function AddIncomeCard({
   const [amount, setAmount] = useState(defaultSalary > 0 ? String(defaultSalary) : "");
   const [label, setLabel] = useState("Salary");
   const [occurredOn, setOccurredOn] = useState(() => defaultIncomeDate(cycleStart, cycleEnd));
-  const activeAccounts = accounts.filter((account) => account.is_active);
-  const [accountId, setAccountId] = useState(activeAccounts[0]?.id ?? "");
 
   function save(nextAmount: number, nextLabel: string, isSalary: boolean) {
     startTransition(async () => {
@@ -52,7 +47,6 @@ export function AddIncomeCard({
         label: nextLabel || "Income",
         isSalary,
         occurredOn,
-        accountId: accountId || null,
       });
       if (!result.ok) toast.error(result.error);
       else {
@@ -85,7 +79,7 @@ export function AddIncomeCard({
           {pending ? "Saving…" : `Add salary ${formatINR(defaultSalary)}`}
         </Button>
       ) : null}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-3">
         <Field label="Amount">
           <Input inputMode="decimal" value={amount} placeholder="0" onChange={(event) => setAmount(event.target.value)} />
         </Field>
@@ -95,18 +89,6 @@ export function AddIncomeCard({
         <Field label="Date received">
           <Input type="date" value={occurredOn} onChange={(event) => setOccurredOn(event.target.value)} />
         </Field>
-        {activeAccounts.length > 0 ? (
-          <Field label="Landed in">
-            <NativeSelect value={accountId} onChange={(event) => setAccountId(event.target.value)}>
-              <option value="">Not assigned</option>
-              {activeAccounts.map((account) => (
-                <option key={account.id} value={account.id}>
-                  {account.name}
-                </option>
-              ))}
-            </NativeSelect>
-          </Field>
-        ) : null}
       </div>
       <div className="flex gap-2">
         <Button
@@ -125,17 +107,10 @@ export function AddIncomeCard({
   );
 }
 
-export function IncomeChips({
-  incomes,
-  accounts = [],
-}: {
-  incomes: Income[];
-  accounts?: Account[];
-}) {
+export function IncomeChips({ incomes }: { incomes: Income[] }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   if (incomes.length === 0) return null;
-  const activeAccounts = accounts.filter((account) => account.is_active);
   return (
     <ul className="flex flex-wrap gap-2">
       {incomes.map((row) => (
@@ -144,28 +119,6 @@ export function IncomeChips({
             {row.label}: {formatINR(row.amount)}
             {row.is_salary ? ` · ${formatDayLabel(row.occurred_on)}` : ""}
           </span>
-          {activeAccounts.length > 0 ? (
-            <NativeSelect
-              className="h-7 w-auto min-w-0 border-0 bg-transparent px-1 pr-6 text-xs"
-              value={row.account_id ?? ""}
-              aria-label={`Account for ${row.label}`}
-              disabled={pending}
-              onChange={(event) =>
-                startTransition(async () => {
-                  const result = await assignIncomeAccount(row.id, event.target.value || null);
-                  if (!result.ok) toast.error(result.error);
-                  else router.refresh();
-                })
-              }
-            >
-              <option value="">Account?</option>
-              {activeAccounts.map((account) => (
-                <option key={account.id} value={account.id}>
-                  {account.name}
-                </option>
-              ))}
-            </NativeSelect>
-          ) : null}
           <button
             type="button"
             disabled={pending}
@@ -274,17 +227,18 @@ export function AddEnvelopeCard({
   return <Card className="space-y-3">{form}</Card>;
 }
 
-export function AddAccountCard() {
-  const router = useRouter();
+export function AddAccountCard({ href = "/accounts" }: { href?: string }) {
   return (
     <Card className="space-y-3">
       <div>
         <h2 className="text-base font-semibold">Where do you spend from?</h2>
         <p className="text-sm text-muted">
-          Add bank accounts, a credit card, or cash, plus what was in each before this payday.
+          Add bank accounts, a credit card, or cash. Then type what was already in each one.
         </p>
       </div>
-      <AddAccountFields embedded onDone={() => router.refresh()} />
+      <Button asChild>
+        <Link href={href}>Add accounts</Link>
+      </Button>
     </Card>
   );
 }

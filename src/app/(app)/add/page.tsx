@@ -29,7 +29,7 @@ export default async function AddPage() {
             : "Pick an envelope you already have, or name something new. One save is enough."}
         </p>
       </div>
-      {accounts.length === 0 ? <AddAccountCard /> : null}
+      {accounts.length === 0 ? <AddAccountCard href={ledger ? "/settings" : "/accounts"} /> : null}
       {accounts.length > 0 ? (
         <TransactionForm
           accounts={accounts}

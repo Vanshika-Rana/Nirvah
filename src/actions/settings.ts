@@ -1,7 +1,7 @@
 "use server";
 
 import { fail, withAction, type ActionResult } from "@/lib/action-result";
-import { getAuthContext, getCategories } from "@/lib/data";
+import { ensureAccountMonthBalances, getAuthContext, getCategories } from "@/lib/data";
 import { LEDGER_STARTER_CATEGORIES } from "@/lib/finance/ledger";
 import { TRACKER_MODES, type TrackerMode } from "@/lib/types";
 import { accountSchema, categorySchema, profileSchema } from "@/lib/validation/budget";
@@ -13,6 +13,7 @@ function refresh() {
   revalidatePath("/add");
   revalidatePath("/settings");
   revalidatePath("/history");
+  revalidatePath("/accounts");
 }
 
 export async function saveWeekStart(weekStartDay: number): Promise<ActionResult<{ week_start_day: number }>> {
@@ -80,6 +81,48 @@ export async function saveAccount(input: unknown): Promise<ActionResult<{ id: st
     refresh();
     return { id: data.id };
   }, "Could not save the account.");
+}
+
+const monthSchema = z.string().regex(/^\d{4}-\d{2}$/);
+
+export async function saveAccountMonthBalance(input: {
+  yearMonth: string;
+  accountId: string;
+  opening?: number;
+  deposited?: number;
+}): Promise<ActionResult<{ id: string }>> {
+  const parsed = z
+    .object({
+      yearMonth: monthSchema,
+      accountId: z.string().uuid(),
+      opening: z.coerce.number().min(-10_000_000).max(10_000_000).optional(),
+      deposited: z.coerce.number().min(0).max(10_000_000).optional(),
+    })
+    .safeParse(input);
+  if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Check the account amounts.");
+  return withAction(async () => {
+    await ensureAccountMonthBalances(parsed.data.yearMonth);
+    const { supabase, user } = await getAuthContext();
+    const patch: { opening?: number; deposited?: number } = {};
+    if (parsed.data.opening !== undefined) patch.opening = parsed.data.opening;
+    if (parsed.data.deposited !== undefined) patch.deposited = parsed.data.deposited;
+    const { data, error } = await supabase
+      .from("account_month_balances")
+      .update(patch)
+      .eq("user_id", user.id)
+      .eq("account_id", parsed.data.accountId)
+      .eq("year_month", `${parsed.data.yearMonth}-01`)
+      .select("id")
+      .single();
+    if (error) {
+      if (error.code === "PGRST205" || /could not find the (table|relation)/i.test(error.message ?? "")) {
+        throw new Error("Run supabase/migrations/0005_account_month_balances.sql so account leftovers can save.");
+      }
+      throw error;
+    }
+    refresh();
+    return { id: data.id };
+  }, "Could not save the account amounts.");
 }
 
 export async function setAccountActive(
@@ -192,6 +235,7 @@ export async function resetAccount(confirmation: string): Promise<ActionResult<{
       "envelopes",
       "family_allocations",
       "monthly_budgets",
+      "account_month_balances",
       "accounts",
       "categories",
     ] as const;

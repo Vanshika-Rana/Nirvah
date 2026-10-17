@@ -1,4 +1,3 @@
-import type { Income } from "@/lib/finance/month-plan";
 import { roundMoney } from "@/lib/finance/money";
 import type { Account, Transaction } from "@/lib/types";
 
@@ -7,7 +6,7 @@ export type AccountPaydayRow = {
   name: string;
   kind: Account["kind"];
   previous: number;
-  income: number;
+  deposited: number;
   spent: number;
   moved: number;
   left: number;
@@ -16,15 +15,10 @@ export type AccountPaydayRow = {
 
 export type AccountPaydaySummary = {
   accounts: AccountPaydayRow[];
-  unassignedIncome: number;
   mostSpentId: string | null;
 };
 
 type Dated = { occurred_on: string };
-
-function beforeCycle(row: Dated, cycleStart: string | null): boolean {
-  return Boolean(cycleStart && row.occurred_on < cycleStart);
-}
 
 function inCycle(row: Dated, cycleStart: string | null, cycleEnd: string | null): boolean {
   if (cycleStart && row.occurred_on < cycleStart) return false;
@@ -32,35 +26,20 @@ function inCycle(row: Dated, cycleStart: string | null, cycleEnd: string | null)
   return true;
 }
 
-function incomeFor(
-  accountId: string,
-  incomes: Pick<Income, "amount" | "account_id" | "occurred_on">[],
-  cycleStart: string | null,
-  cycleEnd: string | null,
-  mode: "before" | "during",
-): number {
-  return roundMoney(
-    incomes.reduce((sum, row) => {
-      if (row.account_id !== accountId) return sum;
-      const match = mode === "before" ? beforeCycle(row, cycleStart) : inCycle(row, cycleStart, cycleEnd);
-      return match ? sum + row.amount : sum;
-    }, 0),
-  );
+export function accountLeft(opening: number, deposited: number, spent: number, moved = 0): number {
+  return roundMoney(opening + deposited - spent + moved);
 }
 
-function movementFor(
+export function accountCycleMovement(
   accountId: string,
   transactions: Pick<Transaction, "type" | "amount" | "account_id" | "counterparty_account_id" | "occurred_on">[],
   cycleStart: string | null,
   cycleEnd: string | null,
-  mode: "before" | "during",
 ): { spent: number; moved: number } {
   let spent = 0;
   let moved = 0;
   for (const transaction of transactions) {
-    const match =
-      mode === "before" ? beforeCycle(transaction, cycleStart) : inCycle(transaction, cycleStart, cycleEnd);
-    if (!match) continue;
+    if (!inCycle(transaction, cycleStart, cycleEnd)) continue;
     if (transaction.type === "expense" && transaction.account_id === accountId) {
       spent += transaction.amount;
       continue;
@@ -78,43 +57,36 @@ function movementFor(
 }
 
 export function summarizeAccounts(input: {
-  accounts: Pick<Account, "id" | "name" | "kind" | "opening_balance" | "is_active">[];
-  incomes: Pick<Income, "amount" | "account_id" | "occurred_on">[];
+  accounts: Pick<Account, "id" | "name" | "kind" | "is_active">[];
+  snapshots: { account_id: string; opening: number; deposited: number }[];
   transactions: Pick<Transaction, "type" | "amount" | "account_id" | "counterparty_account_id" | "occurred_on">[];
   cycleStart: string | null;
   cycleEnd: string | null;
 }): AccountPaydaySummary {
-  const visible = input.accounts.filter((account) => account.is_active);
-  const rows = visible.map((account) => {
-    const priorIncome = incomeFor(account.id, input.incomes, input.cycleStart, input.cycleEnd, "before");
-    const priorMove = movementFor(account.id, input.transactions, input.cycleStart, input.cycleEnd, "before");
-    const income = incomeFor(account.id, input.incomes, input.cycleStart, input.cycleEnd, "during");
-    const during = movementFor(account.id, input.transactions, input.cycleStart, input.cycleEnd, "during");
-    const previous = roundMoney(account.opening_balance + priorIncome - priorMove.spent + priorMove.moved);
-    const left = roundMoney(previous + income - during.spent + during.moved);
-    return {
-      id: account.id,
-      name: account.name,
-      kind: account.kind,
-      previous,
-      income,
-      spent: during.spent,
-      moved: during.moved,
-      left,
-      isMostSpent: false,
-    };
-  });
+  const snapshotByAccount = new Map(input.snapshots.map((row) => [row.account_id, row]));
+  const rows = input.accounts
+    .filter((account) => account.is_active)
+    .map((account) => {
+      const snapshot = snapshotByAccount.get(account.id);
+      const previous = snapshot?.opening ?? 0;
+      const deposited = snapshot?.deposited ?? 0;
+      const during = accountCycleMovement(account.id, input.transactions, input.cycleStart, input.cycleEnd);
+      return {
+        id: account.id,
+        name: account.name,
+        kind: account.kind,
+        previous,
+        deposited,
+        spent: during.spent,
+        moved: during.moved,
+        left: accountLeft(previous, deposited, during.spent, during.moved),
+        isMostSpent: false,
+      };
+    });
 
   const topSpend = Math.max(0, ...rows.map((row) => row.spent));
   const mostSpentId = topSpend > 0 ? (rows.find((row) => row.spent === topSpend)?.id ?? null) : null;
   const accounts = rows.map((row) => ({ ...row, isMostSpent: row.id === mostSpentId }));
 
-  const unassignedIncome = roundMoney(
-    input.incomes.reduce((sum, row) => {
-      if (row.account_id) return sum;
-      return inCycle(row, input.cycleStart, input.cycleEnd) ? sum + row.amount : sum;
-    }, 0),
-  );
-
-  return { accounts, unassignedIncome, mostSpentId };
+  return { accounts, mostSpentId };
 }

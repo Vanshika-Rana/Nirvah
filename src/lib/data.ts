@@ -7,12 +7,13 @@ import {
   payCycleForMonth,
   salaryDates,
   todayISO,
-  toYearMonth,
 } from "@/lib/finance/dates";
+import { accountCycleMovement, accountLeft } from "@/lib/finance/accounts";
 import { computeCarryOver, expenseOutflows, type Envelope, type Income } from "@/lib/finance/month-plan";
 import { createServerSupabase } from "@/lib/supabase/server";
 import type {
   Account,
+  AccountMonthBalance,
   Category,
   CategoryBucket,
   FamilyAllocation,
@@ -65,6 +66,15 @@ function mapAccount(row: Account): Account {
   };
 }
 
+function mapAccountMonthBalance(row: AccountMonthBalance): AccountMonthBalance {
+  return {
+    ...row,
+    year_month: row.year_month.slice(0, 7),
+    opening: Number(row.opening ?? 0),
+    deposited: Number(row.deposited ?? 0),
+  };
+}
+
 function mapAllocation(row: FamilyAllocation): FamilyAllocation {
   return { ...row, year_month: row.year_month.slice(0, 7), amount: Number(row.amount) };
 }
@@ -83,11 +93,6 @@ function isMissingRelation(error: { code?: string; message?: string } | null | u
   return error.code === "PGRST205" || /could not find the (table|relation)/i.test(error.message ?? "");
 }
 
-function isMissingColumn(error: { code?: string; message?: string } | null | undefined): boolean {
-  if (!error) return false;
-  return error.code === "PGRST204" || /could not find the .* column/i.test(error.message ?? "");
-}
-
 export async function isMonthPlanSchemaReady(): Promise<boolean> {
   const { supabase } = await getAuthContext();
   const { error } = await supabase.from("envelopes").select("id").limit(1);
@@ -96,10 +101,8 @@ export async function isMonthPlanSchemaReady(): Promise<boolean> {
 
 export async function isAccountBalanceSchemaReady(): Promise<boolean> {
   const { supabase } = await getAuthContext();
-  const accounts = await supabase.from("accounts").select("opening_balance").limit(1);
-  if (isMissingRelation(accounts.error) || isMissingColumn(accounts.error)) return false;
-  const incomes = await supabase.from("incomes").select("account_id").limit(1);
-  return !isMissingRelation(incomes.error) && !isMissingColumn(incomes.error);
+  const snapshots = await supabase.from("account_month_balances").select("id").limit(1);
+  return !isMissingRelation(snapshots.error);
 }
 
 export async function getAuthContext() {
@@ -183,18 +186,68 @@ export async function getIncomes(yearMonth: string): Promise<Income[]> {
   return ((data ?? []) as Income[]).map(mapIncome);
 }
 
-export async function getAllIncomes(): Promise<Income[]> {
+export async function getAccountMonthBalances(yearMonth: string): Promise<AccountMonthBalance[]> {
   const { supabase, user } = await getAuthContext();
   const { data, error } = await supabase
-    .from("incomes")
+    .from("account_month_balances")
     .select("*")
     .eq("user_id", user.id)
-    .order("occurred_on");
+    .eq("year_month", monthDate(yearMonth));
   if (error) {
     if (isMissingRelation(error)) return [];
     throw error;
   }
-  return ((data ?? []) as Income[]).map(mapIncome);
+  return ((data ?? []) as AccountMonthBalance[]).map(mapAccountMonthBalance);
+}
+
+export async function ensureAccountMonthBalances(yearMonth: string): Promise<AccountMonthBalance[]> {
+  const { supabase, user } = await getAuthContext();
+  const accounts = await getAccounts();
+  if (accounts.length === 0) return [];
+
+  const existing = await getAccountMonthBalances(yearMonth);
+  const have = new Set(existing.map((row) => row.account_id));
+  const missing = accounts.filter((account) => !have.has(account.id));
+  if (missing.length === 0) return existing;
+
+  const previousMonth = addMonths(yearMonth, -1);
+  const previousSnapshots = await getAccountMonthBalances(previousMonth);
+  const salaries = await getSalaryIncomes();
+  const previousCycle = payCycleForMonth(salaryDates(salaries), previousMonth);
+  const previousStart = previousCycle?.start ?? monthRange(previousMonth).start;
+  const previousEnd = previousCycle
+    ? cycleSpendEnd(previousCycle, previousCycle.end ?? previousCycle.start)
+    : monthRange(previousMonth).end;
+  const previousTransactions =
+    previousSnapshots.length > 0 ? await getTransactionsInRange(previousStart, previousEnd) : [];
+
+  const inserted = await supabase
+    .from("account_month_balances")
+    .insert(
+      missing.map((account) => {
+        const previous = previousSnapshots.find((row) => row.account_id === account.id);
+        let opening = account.opening_balance;
+        if (previous) {
+          const movement = accountCycleMovement(account.id, previousTransactions, previousStart, previousEnd);
+          opening = accountLeft(previous.opening, previous.deposited, movement.spent, movement.moved);
+        }
+        return {
+          user_id: user.id,
+          account_id: account.id,
+          year_month: monthDate(yearMonth),
+          opening,
+          deposited: 0,
+        };
+      }),
+    )
+    .select("*");
+
+  if (inserted.error) {
+    if (isMissingRelation(inserted.error)) return existing;
+    throw inserted.error;
+  }
+
+  return [...existing, ...((inserted.data ?? []) as AccountMonthBalance[]).map(mapAccountMonthBalance)];
 }
 
 export async function getSalaryIncomes(): Promise<Income[]> {

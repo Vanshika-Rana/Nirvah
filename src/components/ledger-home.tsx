@@ -56,7 +56,7 @@ export function LedgerHome({
         </div>
       </Card>
 
-      {accounts.length === 0 ? <AddAccountCard /> : null}
+      {accounts.length === 0 ? <AddAccountCard href="/settings" /> : null}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarRange, History, Home, Plus, Settings } from "lucide-react";
+import { CalendarRange, History, Home, Plus, Settings, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const envelopeItems = [
@@ -68,6 +68,7 @@ export function BottomNav({ mode = "envelopes" }: { mode?: "envelopes" | "ledger
 export function Sidebar({ mode = "envelopes" }: { mode?: "envelopes" | "ledger" }) {
   const pathname = usePathname();
   const items = mode === "ledger" ? ledgerItems : envelopeItems;
+  const showAccounts = mode === "envelopes";
   return (
     <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 border-r border-border bg-card p-5 md:flex md:flex-col">
       <div className="mb-8">
@@ -92,6 +93,18 @@ export function Sidebar({ mode = "envelopes" }: { mode?: "envelopes" | "ledger" 
             </Link>
           );
         })}
+        {showAccounts ? (
+          <Link
+            href="/accounts"
+            className={cn(
+              "flex h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium",
+              isActive(pathname, "/accounts") ? "bg-accent-soft text-accent" : "text-foreground hover:bg-[#f3eee6]",
+            )}
+          >
+            <Wallet className="size-4" />
+            Accounts
+          </Link>
+        ) : null}
         <Link
           href="/settings"
           className={cn(

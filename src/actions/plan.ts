@@ -13,6 +13,7 @@ function refresh() {
   revalidatePath("/weekly");
   revalidatePath("/history");
   revalidatePath("/settings");
+  revalidatePath("/accounts");
 }
 
 const money = z.coerce.number().positive("Enter an amount greater than zero.").max(10_000_000);
@@ -87,35 +88,6 @@ export async function deleteIncome(id: string): Promise<ActionResult<{ id: strin
     refresh();
     return { id };
   }, "Could not remove income.");
-}
-
-export async function assignIncomeAccount(
-  id: string,
-  accountId: string | null,
-): Promise<ActionResult<{ id: string }>> {
-  const parsed = z
-    .object({
-      id: z.string().uuid(),
-      accountId: z.string().uuid().nullable(),
-    })
-    .safeParse({ id, accountId });
-  if (!parsed.success) return fail("Pick an account for this income.");
-  return withAction(async () => {
-    const { supabase, user } = await getAuthContext();
-    const { error } = await supabase
-      .from("incomes")
-      .update({ account_id: parsed.data.accountId })
-      .eq("id", parsed.data.id)
-      .eq("user_id", user.id);
-    if (error) {
-      if (isMissingColumn(error)) {
-        throw new Error("Run supabase/migrations/0004_account_balances.sql so income can land in an account.");
-      }
-      throw error;
-    }
-    refresh();
-    return { id: parsed.data.id };
-  }, "Could not assign that income.");
 }
 
 export async function saveWeeklyTarget(

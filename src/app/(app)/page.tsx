@@ -4,8 +4,8 @@ import { LedgerHome } from "@/components/ledger-home";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ensureMonthBudget,
+  ensureAccountMonthBalances,
   getAccounts,
-  getAllIncomes,
   getCategories,
   getProfile,
   getRecentTransactions,
@@ -89,14 +89,11 @@ async function Dashboard({
   const spendEnd = cycle ? cycleSpendEnd(cycle, today) : today;
   const horizon = cycle ? cycleHorizon(cycle, today) : today;
   const transactions = cycle ? await getTransactionsInRange(cycle.start, spendEnd) : [];
-  const [allIncomes, accountTransactions] = await Promise.all([
-    getAllIncomes(),
-    getTransactionsInRange("2000-01-01", spendEnd),
-  ]);
+  const snapshots = await ensureAccountMonthBalances(month);
   const accountSummary = summarizeAccounts({
     accounts,
-    incomes: allIncomes,
-    transactions: accountTransactions,
+    snapshots,
+    transactions,
     cycleStart: cycle?.start ?? null,
     cycleEnd: spendEnd,
   });
@@ -125,8 +122,8 @@ async function Dashboard({
       ) : null}
       {schemaReady && !accountSchemaReady ? (
         <div className="mb-4 rounded-2xl border border-warning/30 bg-warning-soft px-4 py-3 text-sm text-warning">
-          Run <code className="font-medium">supabase/migrations/0004_account_balances.sql</code> in the
-          Supabase SQL editor so each account can keep a starting balance and receive income.
+          Run <code className="font-medium">supabase/migrations/0005_account_month_balances.sql</code> in the
+          Supabase SQL editor so leftovers can carry to the next payday.
         </div>
       ) : null}
     <DashboardView

@@ -15,13 +15,10 @@ export function AccountsEditor({ accounts }: { accounts: Account[] }) {
 
   return (
     <>
-      <p className="mb-3 text-sm text-muted">
-        Starting balance is what was already in the account. Income that lands here is added, and spends from here are
-        subtracted.
-      </p>
+      <p className="mb-3 text-sm text-muted">Names and types only.</p>
       <ul className="space-y-2">
         {accounts.map((account) => (
-          <li key={account.id} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_8.5rem_7rem_auto] sm:items-center">
+          <li key={account.id} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_8.5rem_auto] sm:items-center">
             <Input
               className="min-w-0"
               defaultValue={account.name}
@@ -31,7 +28,6 @@ export function AccountsEditor({ accounts }: { accounts: Account[] }) {
                     id: account.id,
                     name: event.target.value,
                     kind: account.kind,
-                    opening_balance: account.opening_balance,
                   });
                   if (!result.ok) toast.error(result.error);
                 })
@@ -45,7 +41,6 @@ export function AccountsEditor({ accounts }: { accounts: Account[] }) {
                     id: account.id,
                     name: account.name,
                     kind: event.target.value as AccountKind,
-                    opening_balance: account.opening_balance,
                   });
                   if (!result.ok) toast.error(result.error);
                   else router.refresh();
@@ -58,23 +53,6 @@ export function AccountsEditor({ accounts }: { accounts: Account[] }) {
                 </option>
               ))}
             </NativeSelect>
-            <Input
-              inputMode="decimal"
-              defaultValue={account.opening_balance || ""}
-              aria-label={`Starting balance for ${account.name}`}
-              onBlur={(event) =>
-                startTransition(async () => {
-                  const result = await saveAccount({
-                    id: account.id,
-                    name: account.name,
-                    kind: account.kind,
-                    opening_balance: Number(event.target.value),
-                  });
-                  if (!result.ok) toast.error(result.error);
-                  else router.refresh();
-                })
-              }
-            />
             <Button
               variant="secondary"
               disabled={pending}
@@ -90,7 +68,7 @@ export function AccountsEditor({ accounts }: { accounts: Account[] }) {
         ))}
       </ul>
       <form
-        className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_8.5rem_7rem_auto]"
+        className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_8.5rem_auto]"
         onSubmit={(event) => {
           event.preventDefault();
           const formEl = event.currentTarget;
@@ -99,7 +77,6 @@ export function AccountsEditor({ accounts }: { accounts: Account[] }) {
             const result = await saveAccount({
               name: String(form.get("name") ?? ""),
               kind: String(form.get("kind") ?? "bank"),
-              opening_balance: Number(form.get("opening_balance") || 0),
             });
             if (!result.ok) toast.error(result.error);
             else {
@@ -118,7 +95,6 @@ export function AccountsEditor({ accounts }: { accounts: Account[] }) {
             </option>
           ))}
         </NativeSelect>
-        <Input name="opening_balance" inputMode="decimal" placeholder="Starting" />
         <Button type="submit">Add</Button>
       </form>
     </>

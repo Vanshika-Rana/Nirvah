@@ -106,10 +106,9 @@ export function DashboardView({
           defaultSalary={defaultSalary}
           cycleStart={salaryDate}
           cycleEnd={cycleEnd}
-          accounts={accounts}
         />
       ) : null}
-      {incomes.length > 0 ? <IncomeChips incomes={incomes} accounts={accounts} /> : null}
+      {incomes.length > 0 ? <IncomeChips incomes={incomes} /> : null}
       {!needsIncome ? (
         <div className="flex flex-wrap items-center gap-2">
           <AddIncomeCard
@@ -117,17 +116,12 @@ export function DashboardView({
             defaultSalary={defaultSalary}
             cycleStart={salaryDate}
             cycleEnd={cycleEnd}
-            accounts={accounts}
             collapsed
           />
         </div>
       ) : null}
 
-      {accounts.length === 0 ? (
-        <AddAccountCard />
-      ) : (
-        <HomeAccounts accounts={accounts} rows={accountSummary.accounts} unassignedIncome={accountSummary.unassignedIncome} />
-      )}
+      {accounts.length === 0 ? <AddAccountCard /> : <HomeAccounts rows={accountSummary.accounts} />}
 
       {plan.envelopes.length > 0 ? (
         <Card>

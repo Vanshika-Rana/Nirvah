@@ -45,6 +45,15 @@ export type Account = {
   created_at: string;
 };
 
+export type AccountMonthBalance = {
+  id: string;
+  user_id: string;
+  account_id: string;
+  year_month: string;
+  opening: number;
+  deposited: number;
+};
+
 export type EnvelopeKind = "spend" | "save" | "commit";
 
 export type Category = {
