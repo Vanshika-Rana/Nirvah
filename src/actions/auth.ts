@@ -4,7 +4,9 @@ import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { isSupabaseConfigured } from "@/lib/env";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { authSchema } from "@/lib/validation/budget";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 
 export async function signIn(
   formData: FormData,
@@ -54,6 +56,30 @@ export async function signUp(
     { redirectTo: "/login", needsEmail: true },
     "Check your email to confirm the account, then sign in.",
   );
+}
+
+async function appOrigin(): Promise<string> {
+  const requestHeaders = await headers();
+  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
+  const proto = requestHeaders.get("x-forwarded-proto") ?? "http";
+  if (!host) return "";
+  return `${proto}://${host}`;
+}
+
+export async function requestPasswordReset(email: string): Promise<ActionResult<{ sent: true }>> {
+  if (!isSupabaseConfigured()) {
+    return fail("Add your Supabase URL and anon key first.");
+  }
+  const parsed = z.email("Enter a valid email.").safeParse(email);
+  if (!parsed.success) return fail("Enter a valid email.");
+  const origin = await appOrigin();
+  if (!origin) return fail("Could not send the reset email.");
+  const supabase = await createServerSupabase();
+  const { error } = await supabase.auth.resetPasswordForEmail(parsed.data, {
+    redirectTo: `${origin}/auth/callback?next=/auth/update-password`,
+  });
+  if (error) return fail("Could not send the reset email. Try again in a minute.");
+  return ok({ sent: true }, "Check your email for a link to set a new password.");
 }
 
 export async function signOut() {

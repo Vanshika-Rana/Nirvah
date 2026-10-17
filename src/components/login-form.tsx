@@ -2,13 +2,13 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { signIn, signUp } from "@/actions/auth";
+import { requestPasswordReset, signIn, signUp } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 export function LoginForm({ configured }: { configured: boolean }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<"signin" | "signup" | "reset">("signin");
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -29,13 +29,19 @@ export function LoginForm({ configured }: { configured: boolean }) {
         setMessage(null);
         const form = new FormData(event.currentTarget);
         startTransition(async () => {
+          if (mode === "reset") {
+            const result = await requestPasswordReset(String(form.get("email") ?? ""));
+            if (!result.ok) setError(result.error);
+            else setMessage(result.message ?? "Check your email.");
+            return;
+          }
           const result = mode === "signin" ? await signIn(form) : await signUp(form);
           if (!result.ok) {
             setError(result.error);
             return;
           }
           if (result.message) setMessage(result.message);
-          if (result.data.redirectTo === "/") {
+          if ("redirectTo" in result.data && result.data.redirectTo === "/") {
             router.push("/");
             router.refresh();
           }
@@ -45,20 +51,29 @@ export function LoginForm({ configured }: { configured: boolean }) {
       <Field label="Email">
         <Input name="email" type="email" autoComplete="email" required />
       </Field>
-      <Field label="Password">
-        <Input name="password" type="password" autoComplete={mode === "signin" ? "current-password" : "new-password"} minLength={8} required />
-      </Field>
+      {mode !== "reset" ? (
+        <Field label="Password">
+          <Input name="password" type="password" autoComplete={mode === "signin" ? "current-password" : "new-password"} minLength={8} required />
+        </Field>
+      ) : (
+        <p className="text-sm text-muted">We will email a link that opens a page to set a new password.</p>
+      )}
       {error ? <p className="text-sm text-danger">{error}</p> : null}
       {message ? <p className="text-sm text-ok">{message}</p> : null}
       <Button type="submit" size="lg" disabled={pending}>
-        {pending ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
+        {pending ? "Please wait…" : mode === "signin" ? "Sign in" : mode === "signup" ? "Create account" : "Send reset link"}
       </Button>
+      {mode === "signin" ? (
+        <button type="button" className="text-sm font-medium text-accent" onClick={() => setMode("reset")}>
+          Forgot password?
+        </button>
+      ) : null}
       <button
         type="button"
         className="text-sm font-medium text-accent"
-        onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
+        onClick={() => setMode(mode === "signup" ? "signin" : "signin")}
       >
-        {mode === "signin" ? "Need an account? Create one" : "Already have an account? Sign in"}
+        {mode === "signin" ? "Need an account? Create one" : "Back to sign in"}
       </button>
     </form>
   );
