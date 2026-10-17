@@ -2,7 +2,8 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import { EnvelopeBars, MoneyFlow, MoneyRing, SpendPie, WeeklyBarChart } from "@/components/charts";
+import { MoneyFlow, MoneyRing, SpendPie, WeeklyBarChart } from "@/components/charts";
+import { HomeEnvelopes } from "@/components/home-envelopes";
 import { MonthSelector } from "@/components/month-selector";
 import {
   AddAccountCard,
@@ -118,12 +119,14 @@ export function DashboardView({
           <CardHeader>
             <CardTitle>Your envelopes</CardTitle>
           </CardHeader>
-          <EnvelopeBars
-            data={plan.envelopes.map((row) => ({
+          <HomeEnvelopes
+            month={month}
+            envelopes={plan.envelopes.map((row) => ({
+              id: row.id,
               name: row.name,
-              spent: row.spent,
-              planned: row.planned,
               kind: row.kind,
+              planned: row.planned,
+              spent: row.spent,
             }))}
           />
           <div className="mt-4">
@@ -196,19 +199,24 @@ export function DashboardView({
         ) : (
           <ul className="divide-y divide-border">
             {recent.map((transaction) => (
-              <li key={transaction.id} className="flex items-center justify-between gap-3 py-3">
-                <div className="min-w-0">
-                  <p className="truncate font-medium">
-                    {transaction.description ||
-                      categoryById(categories, transaction.category_id)?.name ||
-                      TRANSACTION_TYPE_LABELS[transaction.type]}
-                  </p>
-                  <p className="truncate text-xs text-muted">
-                    {formatDayLabel(transaction.occurred_on)} · {PAYMENT_METHOD_LABELS[transaction.payment_method]} ·{" "}
-                    {accounts.find((account) => account.id === transaction.account_id)?.name}
-                  </p>
-                </div>
-                <p className="shrink-0 font-semibold tabular-nums">{formatINR(transaction.amount)}</p>
+              <li key={transaction.id}>
+                <Link
+                  href={`/history/${transaction.id}`}
+                  className="flex items-center justify-between gap-3 py-3"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">
+                      {transaction.description ||
+                        categoryById(categories, transaction.category_id)?.name ||
+                        TRANSACTION_TYPE_LABELS[transaction.type]}
+                    </p>
+                    <p className="truncate text-xs text-muted">
+                      {formatDayLabel(transaction.occurred_on)} · {PAYMENT_METHOD_LABELS[transaction.payment_method]} ·{" "}
+                      {accounts.find((account) => account.id === transaction.account_id)?.name}
+                    </p>
+                  </div>
+                  <p className="shrink-0 font-semibold tabular-nums">{formatINR(transaction.amount)}</p>
+                </Link>
               </li>
             ))}
           </ul>

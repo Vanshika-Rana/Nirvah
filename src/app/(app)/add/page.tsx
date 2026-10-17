@@ -1,5 +1,5 @@
 import { TransactionForm } from "@/components/transaction-form";
-import { AddAccountCard, AddEnvelopeCard } from "@/components/month-setup";
+import { AddAccountCard } from "@/components/month-setup";
 import { ensureMonthBudget, getAccounts, getCategories, getProfile, getSalaryIncomes } from "@/lib/data";
 import { isSupabaseConfigured } from "@/lib/env";
 import { currentCycleMonth, salaryDates, todayISO } from "@/lib/finance/dates";
@@ -17,20 +17,28 @@ export default async function AddPage() {
   const [accounts, categories, plan] = await Promise.all([
     getAccounts(),
     getCategories(),
-    ledger ? Promise.resolve({ envelopes: [] }) : ensureMonthBudget(month),
+    ensureMonthBudget(month),
   ]);
   return (
     <div className="mx-auto max-w-md space-y-4">
       <div>
         <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{ledger ? "Add" : "Add expense"}</h1>
         <p className="mt-1 text-sm text-muted">
-          {ledger ? "Income or an expense, then a category." : "Amount, spent from, what for."}
+          {ledger
+            ? "Income or an expense, then a category."
+            : "Pick an envelope you already have, or name something new. One save is enough."}
         </p>
       </div>
       {accounts.length === 0 ? <AddAccountCard /> : null}
-      {!ledger && plan.envelopes.length === 0 ? <AddEnvelopeCard month={month} /> : null}
       {accounts.length > 0 ? (
-        <TransactionForm accounts={accounts} categories={categories} compact ledger={ledger} />
+        <TransactionForm
+          accounts={accounts}
+          categories={categories}
+          envelopes={plan.envelopes}
+          month={ledger ? undefined : month}
+          compact
+          ledger={ledger}
+        />
       ) : null}
     </div>
   );

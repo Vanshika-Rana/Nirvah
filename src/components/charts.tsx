@@ -15,15 +15,8 @@ import {
 } from "recharts";
 import { formatINR } from "@/lib/finance/money";
 import { formatDayLabel } from "@/lib/finance/dates";
-import { cn } from "@/lib/utils";
 
 const COLORS = ["#0f766e", "#0d9488", "#14b8a6", "#b45309", "#ea580c", "#7c3aed", "#0369a1"];
-
-const KIND_COLOR: Record<string, string> = {
-  spend: "#0f766e",
-  save: "#b45309",
-  commit: "#7c3aed",
-};
 
 const tooltipStyle = {
   borderRadius: 12,
@@ -130,44 +123,6 @@ export function MoneyFlow({
           <span className="font-medium text-accent">Kept {formatINR(kept)} → next payday</span>
         </div>
       </div>
-    </div>
-  );
-}
-
-export function EnvelopeBars({
-  data,
-}: {
-  data: { name: string; spent: number; planned: number; kind: string }[];
-}) {
-  if (data.length === 0) return null;
-  return (
-    <div className="space-y-4">
-      {data.map((row) => {
-        const leftover = Math.max(0, row.planned - row.spent);
-        const percent = row.planned > 0 ? Math.min(100, (row.spent / row.planned) * 100) : 0;
-        const over = row.spent > row.planned && row.planned > 0;
-        const fill = over ? "#b42318" : KIND_COLOR[row.kind] ?? "#0f766e";
-        const headline = row.kind === "save" ? "kept" : over ? "over" : "left";
-        const headlineValue = row.kind === "save" ? leftover : over ? row.spent - row.planned : leftover;
-        return (
-          <div key={row.name}>
-            <div className="mb-1 flex items-end justify-between gap-3">
-              <div>
-                <p className="font-medium">{row.name}</p>
-                <p className="text-xs text-muted">
-                  {formatINR(row.spent)} of {formatINR(row.planned)}
-                </p>
-              </div>
-              <p className={cn("text-sm font-semibold tabular-nums", over ? "text-danger" : "text-accent")}>
-                {formatINR(headlineValue)} {headline}
-              </p>
-            </div>
-            <div className="h-3 overflow-hidden rounded-full bg-[#efe8de]">
-              <div className="h-full rounded-full transition-all" style={{ width: `${percent}%`, background: fill }} />
-            </div>
-          </div>
-        );
-      })}
     </div>
   );
 }

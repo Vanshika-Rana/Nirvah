@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { ensureEnvelopeForExpense } from "@/actions/plan";
 import { deleteTransaction, saveTransaction } from "@/actions/transactions";
 import { Button } from "@/components/ui/button";
 import { Field, Input, NativeSelect, Textarea } from "@/components/ui/input";
@@ -29,6 +30,8 @@ function loadPrefs(): Prefs {
 export function TransactionForm({
   accounts,
   categories,
+  envelopes = [],
+  month,
   transaction,
   defaultType = "expense",
   compact = false,
@@ -36,6 +39,8 @@ export function TransactionForm({
 }: {
   accounts: Account[];
   categories: Category[];
+  envelopes?: { id: string; name: string; category_id: string | null }[];
+  month?: string;
   transaction?: Transaction;
   defaultType?: TransactionType;
   compact?: boolean;
@@ -63,6 +68,11 @@ export function TransactionForm({
   }, [transaction, defaultType, activeAccounts, activeCategories]);
 
   const [values, setValues] = useState(defaults);
+  const useEnvelopes = !ledger && Boolean(month);
+  const namedEnvelopes = envelopes.filter((envelope) => envelope.category_id);
+  const matchingEnvelope = namedEnvelopes.find((envelope) => envelope.category_id === defaults.category_id);
+  const [envelopePick, setEnvelopePick] = useState(matchingEnvelope?.category_id ?? (namedEnvelopes[0]?.category_id || "__new__"));
+  const [newEnvelopeName, setNewEnvelopeName] = useState("");
 
   const needsCounterparty = values.type === "transfer" || values.type === "repayment";
   const incomeSelected = values.type === "income";
@@ -80,11 +90,28 @@ export function TransactionForm({
     event.preventDefault();
     if (pending) return;
     startTransition(async () => {
+      let categoryId = values.category_id || null;
+      if (useEnvelopes && month) {
+        if (envelopePick === "__new__") {
+          const placed = await ensureEnvelopeForExpense({
+            yearMonth: month,
+            name: newEnvelopeName,
+            amount: Number(values.amount),
+          });
+          if (!placed.ok) {
+            toast.error(placed.error);
+            return;
+          }
+          categoryId = placed.data.category_id;
+        } else {
+          categoryId = envelopePick || null;
+        }
+      }
       const result = await saveTransaction(
         {
           ...values,
           amount: Number(values.amount),
-          category_id: values.category_id || null,
+          category_id: categoryId,
           counterparty_account_id: values.counterparty_account_id || null,
           client_request_id: transaction ? undefined : requestId,
         },
@@ -100,11 +127,12 @@ export function TransactionForm({
         JSON.stringify({
           account_id: values.account_id,
           payment_method: values.payment_method,
-          category_id: values.category_id,
+          category_id: categoryId ?? undefined,
         } satisfies Prefs),
       );
       if (!transaction) {
         setRequestId(crypto.randomUUID());
+        setNewEnvelopeName("");
         setValues((current) => ({
           ...current,
           amount: "",
@@ -182,17 +210,38 @@ export function TransactionForm({
       </Field>
 
       <Field label="What for">
-        <NativeSelect value={values.category_id} onChange={(event) => update("category_id", event.target.value)}>
-          <option value="">No category</option>
-          {visibleCategories.map((category) => (
-            <option key={category.id} value={category.id}>
-              {ledger && (category.bucket === "personal" || category.bucket === "business")
-                ? `${category.bucket === "business" ? "Business" : "Personal"} · ${category.name}`
-                : category.name}
-            </option>
-          ))}
-        </NativeSelect>
+        {useEnvelopes ? (
+          <NativeSelect value={envelopePick} onChange={(event) => setEnvelopePick(event.target.value)}>
+            {namedEnvelopes.map((envelope) => (
+              <option key={envelope.id} value={envelope.category_id ?? ""}>
+                {envelope.name}
+              </option>
+            ))}
+            <option value="__new__">Something new</option>
+          </NativeSelect>
+        ) : (
+          <NativeSelect value={values.category_id} onChange={(event) => update("category_id", event.target.value)}>
+            <option value="">No category</option>
+            {visibleCategories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {ledger && (category.bucket === "personal" || category.bucket === "business")
+                  ? `${category.bucket === "business" ? "Business" : "Personal"} · ${category.name}`
+                  : category.name}
+              </option>
+            ))}
+          </NativeSelect>
+        )}
       </Field>
+      {useEnvelopes && envelopePick === "__new__" ? (
+        <Field label="Name it">
+          <Input
+            value={newEnvelopeName}
+            placeholder="Brother’s fees, Diwali…"
+            required
+            onChange={(event) => setNewEnvelopeName(event.target.value)}
+          />
+        </Field>
+      ) : null}
 
       <div className="grid grid-cols-2 gap-3">
         <Field label="Date">

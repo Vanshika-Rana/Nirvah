@@ -159,7 +159,9 @@ export function AddEnvelopeCard({
       {collapsed ? null : (
         <div>
           <h2 className="text-base font-semibold">Split this payday</h2>
-          <p className="text-sm text-muted">Create your own buckets: spending, savings, family, loan, anything.</p>
+          <p className="text-sm text-muted">
+            Assign what you planned. If something new comes up — school fees, Diwali — add another envelope.
+          </p>
         </div>
       )}
       <div className="grid gap-3 sm:grid-cols-3">

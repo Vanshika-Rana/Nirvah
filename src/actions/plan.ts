@@ -124,7 +124,7 @@ export async function saveEnvelope(input: {
   name: string;
   kind: EnvelopeKind;
   amount: number;
-}): Promise<ActionResult<{ id: string }>> {
+}): Promise<ActionResult<{ id: string; category_id: string | null }>> {
   const parsed = z
     .object({
       id: z.string().uuid().optional(),
@@ -183,7 +183,7 @@ export async function saveEnvelope(input: {
         .eq("user_id", user.id);
       if (error) throw error;
       refresh();
-      return { id: parsed.data.id };
+      return { id: parsed.data.id, category_id: categoryId };
     }
 
     const inserted = await supabase
@@ -201,8 +201,45 @@ export async function saveEnvelope(input: {
       .single();
     if (inserted.error) throw inserted.error;
     refresh();
-    return { id: inserted.data.id };
+    return { id: inserted.data.id, category_id: categoryId };
   }, "Could not save the envelope.");
+}
+
+export async function ensureEnvelopeForExpense(input: {
+  yearMonth: string;
+  name: string;
+  amount: number;
+}): Promise<ActionResult<{ category_id: string }>> {
+  const parsed = z
+    .object({
+      yearMonth: monthSchema,
+      name: z.string().trim().min(1).max(80),
+      amount: z.coerce.number().positive().max(10_000_000),
+    })
+    .safeParse(input);
+  if (!parsed.success) return fail("Name this expense so it has a place.");
+  return withAction(async () => {
+    const { supabase, user } = await getAuthContext();
+    const existing = await supabase
+      .from("envelopes")
+      .select("category_id")
+      .eq("user_id", user.id)
+      .eq("year_month", `${parsed.data.yearMonth}-01`)
+      .ilike("name", parsed.data.name)
+      .maybeSingle();
+    if (existing.data?.category_id) {
+      return { category_id: existing.data.category_id as string };
+    }
+    const created = await saveEnvelope({
+      yearMonth: parsed.data.yearMonth,
+      name: parsed.data.name,
+      kind: "spend",
+      amount: parsed.data.amount,
+    });
+    if (!created.ok) throw new Error(created.error);
+    if (!created.data.category_id) throw new Error("Could not place this expense.");
+    return { category_id: created.data.category_id };
+  }, "Could not place this expense.");
 }
 
 export async function deleteEnvelope(id: string): Promise<ActionResult<{ id: string }>> {
