@@ -200,6 +200,36 @@ export function WeeklyBarChart({
   );
 }
 
+export function AccountSpendBars({
+  data,
+}: {
+  data: { name: string; spent: number; left: number }[];
+}) {
+  const rows = data.filter((row) => row.spent > 0 || row.left !== 0);
+  if (rows.length === 0) {
+    return <p className="text-sm text-muted">No account activity to chart yet.</p>;
+  }
+  const max = Math.max(1, ...rows.map((row) => Math.max(row.spent, Math.abs(row.left))));
+  return (
+    <div className="space-y-3">
+      {rows.map((row) => (
+        <div key={row.name}>
+          <div className="mb-1 flex items-center justify-between gap-3 text-sm">
+            <p className="min-w-0 truncate font-medium">{row.name}</p>
+            <p className="shrink-0 tabular-nums text-muted">{formatINR(row.spent)} spent</p>
+          </div>
+          <div className="h-2.5 overflow-hidden rounded-full bg-[#efe8de]">
+            <div
+              className="h-full rounded-full bg-accent"
+              style={{ width: `${Math.min(100, (row.spent / max) * 100)}%` }}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function DailyBarChart({
   data,
 }: {

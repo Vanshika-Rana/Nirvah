@@ -54,7 +54,7 @@ async function Settings({
         <div className="min-w-0">
           <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Settings</h1>
           <p className="text-sm text-muted">
-            {ledger ? "Categories, accounts, reset." : "Salary, weekly target, accounts."}
+            {ledger ? "Categories, accounts, reset." : "Salary, weekly target, reset."}
           </p>
         </div>
         <form action={signOut}>
@@ -67,7 +67,7 @@ async function Settings({
         <LedgerSettingsForm accounts={accounts} categories={categories} />
       ) : (
         <Suspense fallback={<Skeleton className="h-64" />}>
-          <EnvelopeSettings month={month} accounts={accounts} defaultSalary={profile.default_salary} salaryDates={dates} />
+          <EnvelopeSettings month={month} defaultSalary={profile.default_salary} salaryDates={dates} />
         </Suspense>
       )}
     </div>
@@ -76,26 +76,18 @@ async function Settings({
 
 async function EnvelopeSettings({
   month,
-  accounts,
   defaultSalary,
   salaryDates,
 }: {
   month: string;
-  accounts: Awaited<ReturnType<typeof getAccounts>>;
   defaultSalary: number;
   salaryDates: string[];
 }) {
-  const { budget, envelopes } = await ensureMonthBudget(month);
+  const { budget } = await ensureMonthBudget(month);
   return (
     <>
       <MonthSelector month={month} path="/settings" salaryDates={salaryDates} />
-      <SettingsForm
-        month={month}
-        budget={budget}
-        envelopes={envelopes}
-        accounts={accounts}
-        defaultSalary={defaultSalary}
-      />
+      <SettingsForm month={month} budget={budget} defaultSalary={defaultSalary} />
     </>
   );
 }

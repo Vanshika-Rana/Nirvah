@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import { MoneyFlow, MoneyRing, SpendPie, WeeklyBarChart } from "@/components/charts";
+import { MoneyRing, SpendPie, WeeklyBarChart } from "@/components/charts";
 import { HomeAccounts } from "@/components/home-accounts";
 import { HomeEnvelopes } from "@/components/home-envelopes";
 import { MonthSelector } from "@/components/month-selector";
@@ -82,16 +82,6 @@ export function DashboardView({
       <Card className="bg-[linear-gradient(180deg,#fffcf7_0%,#f3faf7_100%)]">
         <MoneyRing spent={plan.expenses} remaining={Math.max(0, plan.remaining)} label="Left until next salary" />
         <p className="mt-4 text-sm leading-6 text-foreground">{plan.motivation}</p>
-        {plan.available > 0 ? (
-          <div className="mt-5">
-            <MoneyFlow
-              opening={plan.opening}
-              income={plan.income}
-              spent={plan.expenses}
-              remaining={plan.remaining}
-            />
-          </div>
-        ) : null}
         <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-3 text-sm sm:mt-5 sm:grid-cols-4">
           <Stat label="From last payday" value={plan.opening} />
           <Stat label="Added this payday" value={plan.income} />
@@ -156,6 +146,9 @@ export function DashboardView({
         <Card>
           <CardHeader>
             <CardTitle>This week</CardTitle>
+            <Link href="/weekly" className="text-sm font-medium text-accent">
+              Weekly
+            </Link>
           </CardHeader>
           {!salaryDate ? (
             <p className="mb-3 text-sm text-muted">

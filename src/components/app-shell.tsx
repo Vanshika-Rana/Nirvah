@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { Settings } from "lucide-react";
+import { Settings, Wallet } from "lucide-react";
 import { BottomNav, Sidebar } from "@/components/layout/nav";
 import { ModeChooser } from "@/components/mode-chooser";
 import { SetupNotice } from "@/components/setup-notice";
@@ -50,9 +50,16 @@ function Shell({
             {hideNav ? (
               <span />
             ) : (
-              <Link href="/settings" aria-label="Settings" className="flex size-11 items-center justify-center rounded-xl hover:bg-[#efe8de]">
-                <Settings className="size-5" />
-              </Link>
+              <div className="flex items-center">
+                {mode === "envelopes" ? (
+                  <Link href="/accounts" aria-label="Accounts" className="flex size-11 items-center justify-center rounded-xl hover:bg-[#efe8de]">
+                    <Wallet className="size-5" />
+                  </Link>
+                ) : null}
+                <Link href="/settings" aria-label="Settings" className="flex size-11 items-center justify-center rounded-xl hover:bg-[#efe8de]">
+                  <Settings className="size-5" />
+                </Link>
+              </div>
             )}
           </div>
           {children}
