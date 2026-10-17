@@ -5,3 +5,4 @@ export * from "@/lib/finance/weekly";
 export * from "@/lib/finance/summarize";
 export * from "@/lib/finance/budgets";
 export * from "@/lib/finance/month-plan";
+export * from "@/lib/finance/accounts";

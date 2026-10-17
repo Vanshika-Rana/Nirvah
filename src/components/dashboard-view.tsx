@@ -3,6 +3,7 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { MoneyFlow, MoneyRing, SpendPie, WeeklyBarChart } from "@/components/charts";
+import { HomeAccounts } from "@/components/home-accounts";
 import { HomeEnvelopes } from "@/components/home-envelopes";
 import { MonthSelector } from "@/components/month-selector";
 import {
@@ -15,6 +16,7 @@ import {
 import { PAYMENT_METHOD_LABELS, TRANSACTION_TYPE_LABELS } from "@/lib/constants";
 import { formatINR } from "@/lib/finance/money";
 import { formatDayLabel, todayISO } from "@/lib/finance/dates";
+import type { AccountPaydaySummary } from "@/lib/finance/accounts";
 import type { Income, MonthPlanSummary } from "@/lib/finance/month-plan";
 import type { Account, Category, Transaction } from "@/lib/types";
 import { categoryById } from "@/lib/finance/classify";
@@ -34,6 +36,7 @@ export function DashboardView({
   categories,
   incomes,
   defaultSalary,
+  accountSummary,
 }: {
   month: string;
   greeting: string;
@@ -49,6 +52,7 @@ export function DashboardView({
   categories: Category[];
   incomes: Income[];
   defaultSalary: number;
+  accountSummary: AccountPaydaySummary;
 }) {
   const today = todayISO(new Date());
   const currentBar = weekBars.find((week) => today >= week.start && today <= week.end);
@@ -97,9 +101,15 @@ export function DashboardView({
       </Card>
 
       {needsIncome ? (
-        <AddIncomeCard month={month} defaultSalary={defaultSalary} cycleStart={salaryDate} cycleEnd={cycleEnd} />
+        <AddIncomeCard
+          month={month}
+          defaultSalary={defaultSalary}
+          cycleStart={salaryDate}
+          cycleEnd={cycleEnd}
+          accounts={accounts}
+        />
       ) : null}
-      {incomes.length > 0 ? <IncomeChips incomes={incomes} /> : null}
+      {incomes.length > 0 ? <IncomeChips incomes={incomes} accounts={accounts} /> : null}
       {!needsIncome ? (
         <div className="flex flex-wrap items-center gap-2">
           <AddIncomeCard
@@ -107,12 +117,17 @@ export function DashboardView({
             defaultSalary={defaultSalary}
             cycleStart={salaryDate}
             cycleEnd={cycleEnd}
+            accounts={accounts}
             collapsed
           />
         </div>
       ) : null}
 
-      {accounts.length === 0 ? <AddAccountCard /> : null}
+      {accounts.length === 0 ? (
+        <AddAccountCard />
+      ) : (
+        <HomeAccounts accounts={accounts} rows={accountSummary.accounts} unassignedIncome={accountSummary.unassignedIncome} />
+      )}
 
       {plan.envelopes.length > 0 ? (
         <Card>

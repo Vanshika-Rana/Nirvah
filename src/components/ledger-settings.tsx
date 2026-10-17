@@ -3,7 +3,8 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { saveAccount, saveCategory, setAccountActive, setCategoryActive } from "@/actions/settings";
+import { saveCategory, setCategoryActive } from "@/actions/settings";
+import { AccountsEditor } from "@/components/accounts-editor";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, NativeSelect } from "@/components/ui/input";
@@ -127,61 +128,7 @@ export function LedgerSettingsForm({
         <CardHeader>
           <CardTitle>Accounts</CardTitle>
         </CardHeader>
-        <ul className="space-y-2">
-          {accounts.map((account) => (
-            <li key={account.id} className="flex items-center gap-2">
-              <Input
-                className="min-w-0 flex-1"
-                defaultValue={account.name}
-                onBlur={(event) =>
-                  startTransition(async () => {
-                    const result = await saveAccount({ id: account.id, name: event.target.value, kind: account.kind });
-                    if (!result.ok) toast.error(result.error);
-                  })
-                }
-              />
-              <Button
-                variant="secondary"
-                onClick={() =>
-                  startTransition(() => {
-                    void setAccountActive(account.id, !account.is_active);
-                  })
-                }
-              >
-                {account.is_active ? "Hide" : "Show"}
-              </Button>
-            </li>
-          ))}
-        </ul>
-        <form
-          className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_8.5rem_auto]"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const formEl = event.currentTarget;
-            const form = new FormData(formEl);
-            startTransition(async () => {
-              const result = await saveAccount({
-                name: String(form.get("name") ?? ""),
-                kind: String(form.get("kind") ?? "bank"),
-              });
-              if (!result.ok) toast.error(result.error);
-              else {
-                toast.success("Account added.");
-                formEl.reset();
-                router.refresh();
-              }
-            });
-          }}
-        >
-          <Input name="name" placeholder="New account" required />
-          <NativeSelect name="kind" defaultValue="bank">
-            <option value="bank">Bank</option>
-            <option value="credit_card">Credit card</option>
-            <option value="cash">Cash</option>
-            <option value="other">Other</option>
-          </NativeSelect>
-          <Button type="submit">Add</Button>
-        </form>
+        <AccountsEditor accounts={accounts} />
       </Card>
 
       <ExcelTools />

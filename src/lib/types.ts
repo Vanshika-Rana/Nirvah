@@ -39,6 +39,7 @@ export type Account = {
   user_id: string;
   name: string;
   kind: AccountKind;
+  opening_balance: number;
   is_active: boolean;
   sort_order: number;
   created_at: string;

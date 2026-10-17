@@ -29,18 +29,35 @@ export async function saveWeekStart(weekStartDay: number): Promise<ActionResult<
   }, "Could not save the week start day.");
 }
 
+function isMissingColumn(error: { code?: string; message?: string } | null | undefined): boolean {
+  if (!error) return false;
+  return error.code === "PGRST204" || /could not find the .* column/i.test(error.message ?? "");
+}
+
+const ACCOUNT_BALANCE_SQL = "Run supabase/migrations/0004_account_balances.sql so account balances can save.";
+
 export async function saveAccount(input: unknown): Promise<ActionResult<{ id: string }>> {
   const parsed = accountSchema.safeParse(input);
   if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Check the account.");
   return withAction(async () => {
     const { supabase, user } = await getAuthContext();
+    const opening =
+      parsed.data.opening_balance === undefined ? undefined : Number(parsed.data.opening_balance);
     if (parsed.data.id) {
+      const patch: { name: string; kind: string; opening_balance?: number } = {
+        name: parsed.data.name,
+        kind: parsed.data.kind,
+      };
+      if (opening !== undefined) patch.opening_balance = opening;
       const { error } = await supabase
         .from("accounts")
-        .update({ name: parsed.data.name, kind: parsed.data.kind })
+        .update(patch)
         .eq("id", parsed.data.id)
         .eq("user_id", user.id);
-      if (error) throw error;
+      if (error) {
+        if (isMissingColumn(error)) throw new Error(ACCOUNT_BALANCE_SQL);
+        throw error;
+      }
       refresh();
       return { id: parsed.data.id };
     }
@@ -50,12 +67,16 @@ export async function saveAccount(input: unknown): Promise<ActionResult<{ id: st
         user_id: user.id,
         name: parsed.data.name,
         kind: parsed.data.kind,
+        opening_balance: opening ?? 0,
         sort_order: 99,
         is_active: true,
       })
       .select("id")
       .single();
-    if (error) throw error;
+    if (error) {
+      if (isMissingColumn(error)) throw new Error(ACCOUNT_BALANCE_SQL);
+      throw error;
+    }
     refresh();
     return { id: data.id };
   }, "Could not save the account.");

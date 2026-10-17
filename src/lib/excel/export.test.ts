@@ -14,7 +14,7 @@ const profile: Profile = {
 };
 
 const accounts: Account[] = [
-  { id: "a1", user_id: "u", name: "HDFC 2", kind: "bank", is_active: true, sort_order: 1, created_at: "" },
+  { id: "a1", user_id: "u", name: "HDFC 2", kind: "bank", opening_balance: 0, is_active: true, sort_order: 1, created_at: "" },
 ];
 
 const categories: Category[] = [

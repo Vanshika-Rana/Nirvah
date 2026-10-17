@@ -3,7 +3,7 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { saveEnvelope } from "@/actions/plan";
+import { deleteEnvelope, saveEnvelope } from "@/actions/plan";
 import { Input } from "@/components/ui/input";
 import { formatINR } from "@/lib/finance/money";
 import type { EnvelopeKind } from "@/lib/finance/month-plan";
@@ -30,6 +30,14 @@ export function HomeEnvelopes({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+
+  function remove(envelope: (typeof envelopes)[number]) {
+    startTransition(async () => {
+      const result = await deleteEnvelope(envelope.id);
+      if (!result.ok) toast.error(result.error);
+      else router.refresh();
+    });
+  }
 
   function saveAmount(envelope: (typeof envelopes)[number], raw: string) {
     const amount = Number(raw);
@@ -65,6 +73,16 @@ export function HomeEnvelopes({
                 <p className="font-medium">{row.name}</p>
                 <p className="text-xs text-muted">
                   {formatINR(row.spent)} spent of assigned
+                  {" · "}
+                  <button
+                    type="button"
+                    disabled={pending}
+                    className="hover:text-danger"
+                    aria-label={`Delete ${row.name}`}
+                    onClick={() => remove(row)}
+                  >
+                    Delete
+                  </button>
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-2">

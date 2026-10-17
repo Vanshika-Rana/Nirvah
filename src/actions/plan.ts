@@ -18,12 +18,18 @@ function refresh() {
 const money = z.coerce.number().positive("Enter an amount greater than zero.").max(10_000_000);
 const monthSchema = z.string().regex(/^\d{4}-\d{2}$/);
 
+function isMissingColumn(error: { code?: string; message?: string } | null | undefined): boolean {
+  if (!error) return false;
+  return error.code === "PGRST204" || /could not find the .* column/i.test(error.message ?? "");
+}
+
 export async function addIncome(input: {
   yearMonth: string;
   amount: number;
   label: string;
   isSalary?: boolean;
   occurredOn: string;
+  accountId?: string | null;
 }): Promise<ActionResult<{ id: string }>> {
   const parsed = z
     .object({
@@ -32,6 +38,7 @@ export async function addIncome(input: {
       label: z.string().trim().min(1).max(80),
       isSalary: z.boolean().optional(),
       occurredOn: z.string().refine(isISODate, "Pick a valid date."),
+      accountId: z.string().uuid().nullable().optional(),
     })
     .safeParse(input);
   if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Check the income.");
@@ -45,18 +52,21 @@ export async function addIncome(input: {
     );
     await ensureMonthBudget(yearMonth);
     const { supabase, user } = await getAuthContext();
-    const { data, error } = await supabase
-      .from("incomes")
-      .insert({
-        user_id: user.id,
-        year_month: `${yearMonth}-01`,
-        amount: parsed.data.amount,
-        label: parsed.data.label,
-        is_salary: Boolean(parsed.data.isSalary),
-        occurred_on: parsed.data.occurredOn,
-      })
-      .select("id")
-      .single();
+    const row = {
+      user_id: user.id,
+      year_month: `${yearMonth}-01`,
+      amount: parsed.data.amount,
+      label: parsed.data.label,
+      is_salary: Boolean(parsed.data.isSalary),
+      occurred_on: parsed.data.occurredOn,
+      account_id: parsed.data.accountId ?? null,
+    };
+    let inserted = await supabase.from("incomes").insert(row).select("id").single();
+    if (inserted.error && isMissingColumn(inserted.error)) {
+      const { account_id: _accountId, ...withoutAccount } = row;
+      inserted = await supabase.from("incomes").insert(withoutAccount).select("id").single();
+    }
+    const { data, error } = inserted;
     if (error) throw error;
     if (parsed.data.isSalary) {
       await supabase.from("profiles").upsert({
@@ -77,6 +87,35 @@ export async function deleteIncome(id: string): Promise<ActionResult<{ id: strin
     refresh();
     return { id };
   }, "Could not remove income.");
+}
+
+export async function assignIncomeAccount(
+  id: string,
+  accountId: string | null,
+): Promise<ActionResult<{ id: string }>> {
+  const parsed = z
+    .object({
+      id: z.string().uuid(),
+      accountId: z.string().uuid().nullable(),
+    })
+    .safeParse({ id, accountId });
+  if (!parsed.success) return fail("Pick an account for this income.");
+  return withAction(async () => {
+    const { supabase, user } = await getAuthContext();
+    const { error } = await supabase
+      .from("incomes")
+      .update({ account_id: parsed.data.accountId })
+      .eq("id", parsed.data.id)
+      .eq("user_id", user.id);
+    if (error) {
+      if (isMissingColumn(error)) {
+        throw new Error("Run supabase/migrations/0004_account_balances.sql so income can land in an account.");
+      }
+      throw error;
+    }
+    refresh();
+    return { id: parsed.data.id };
+  }, "Could not assign that income.");
 }
 
 export async function saveWeeklyTarget(

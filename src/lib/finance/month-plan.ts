@@ -30,6 +30,7 @@ export type Income = {
   amount: number;
   is_salary: boolean;
   occurred_on: string;
+  account_id: string | null;
   created_at: string;
 };
 

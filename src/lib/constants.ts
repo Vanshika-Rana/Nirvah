@@ -1,4 +1,4 @@
-import type { PaymentMethod } from "@/lib/types";
+import type { AccountKind, PaymentMethod } from "@/lib/types";
 
 export const APP_NAME = "Nirvah";
 export const APP_TAGLINE = "Personal budget tracker";
@@ -27,3 +27,10 @@ export const TRANSACTION_TYPE_LABELS: Record<
 export const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
 export const HISTORY_PAGE_SIZE = 50;
+
+export const ACCOUNT_KIND_LABELS: Record<AccountKind, string> = {
+  bank: "Bank",
+  credit_card: "Credit card",
+  cash: "Cash",
+  other: "Other",
+};

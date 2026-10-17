@@ -54,6 +54,14 @@ function mapIncome(row: Income): Income {
     ...row,
     year_month: row.year_month.slice(0, 7),
     amount: Number(row.amount),
+    account_id: row.account_id ?? null,
+  };
+}
+
+function mapAccount(row: Account): Account {
+  return {
+    ...row,
+    opening_balance: Number(row.opening_balance ?? 0),
   };
 }
 
@@ -75,10 +83,23 @@ function isMissingRelation(error: { code?: string; message?: string } | null | u
   return error.code === "PGRST205" || /could not find the (table|relation)/i.test(error.message ?? "");
 }
 
+function isMissingColumn(error: { code?: string; message?: string } | null | undefined): boolean {
+  if (!error) return false;
+  return error.code === "PGRST204" || /could not find the .* column/i.test(error.message ?? "");
+}
+
 export async function isMonthPlanSchemaReady(): Promise<boolean> {
   const { supabase } = await getAuthContext();
   const { error } = await supabase.from("envelopes").select("id").limit(1);
   return !isMissingRelation(error);
+}
+
+export async function isAccountBalanceSchemaReady(): Promise<boolean> {
+  const { supabase } = await getAuthContext();
+  const accounts = await supabase.from("accounts").select("opening_balance").limit(1);
+  if (isMissingRelation(accounts.error) || isMissingColumn(accounts.error)) return false;
+  const incomes = await supabase.from("incomes").select("account_id").limit(1);
+  return !isMissingRelation(incomes.error) && !isMissingColumn(incomes.error);
 }
 
 export async function getAuthContext() {
@@ -130,7 +151,7 @@ export async function getAccounts(): Promise<Account[]> {
     .eq("user_id", user.id)
     .order("sort_order");
   if (error) throw error;
-  return (data ?? []) as Account[];
+  return ((data ?? []) as Account[]).map(mapAccount);
 }
 
 export async function getCategories(): Promise<Category[]> {
@@ -155,6 +176,20 @@ export async function getIncomes(yearMonth: string): Promise<Income[]> {
     .eq("user_id", user.id)
     .eq("year_month", monthDate(yearMonth))
     .order("created_at");
+  if (error) {
+    if (isMissingRelation(error)) return [];
+    throw error;
+  }
+  return ((data ?? []) as Income[]).map(mapIncome);
+}
+
+export async function getAllIncomes(): Promise<Income[]> {
+  const { supabase, user } = await getAuthContext();
+  const { data, error } = await supabase
+    .from("incomes")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("occurred_on");
   if (error) {
     if (isMissingRelation(error)) return [];
     throw error;
@@ -359,7 +394,7 @@ export async function getAllExportData() {
     transactions: ((transactions.data ?? []) as Transaction[]).map(mapTransaction),
     budgets: ((budgets.data ?? []) as MonthlyBudget[]).map(mapBudget),
     familyAllocations: ((familyAllocations.data ?? []) as FamilyAllocation[]).map(mapAllocation),
-    accounts: (accounts.data ?? []) as Account[],
+    accounts: ((accounts.data ?? []) as Account[]).map(mapAccount),
     categories: (categories.data ?? []) as Category[],
     profile: profile.data as Profile,
     incomes: ((incomes.data ?? []) as Income[]).map(mapIncome),

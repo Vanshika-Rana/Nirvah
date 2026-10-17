@@ -5,11 +5,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   ensureMonthBudget,
   getAccounts,
+  getAllIncomes,
   getCategories,
   getProfile,
   getRecentTransactions,
   getSalaryIncomes,
   getTransactionsInRange,
+  isAccountBalanceSchemaReady,
   isMonthPlanSchemaReady,
 } from "@/lib/data";
 import { isSupabaseConfigured } from "@/lib/env";
@@ -26,6 +28,7 @@ import {
   monthRange,
   todayISO,
 } from "@/lib/finance/dates";
+import { summarizeAccounts } from "@/lib/finance/accounts";
 import { summarizeLedger } from "@/lib/finance/ledger";
 import { summarizeMonthPlan } from "@/lib/finance/month-plan";
 import { weekSummaries } from "@/lib/finance/weekly";
@@ -55,8 +58,9 @@ async function Dashboard({
   }
 
   const today = todayISO(now);
-  const [schemaReady, salaries, accounts, categories, recent, profile] = await Promise.all([
+  const [schemaReady, accountSchemaReady, salaries, accounts, categories, recent, profile] = await Promise.all([
     isMonthPlanSchemaReady(),
+    isAccountBalanceSchemaReady(),
     getSalaryIncomes(),
     getAccounts(),
     getCategories(),
@@ -85,6 +89,17 @@ async function Dashboard({
   const spendEnd = cycle ? cycleSpendEnd(cycle, today) : today;
   const horizon = cycle ? cycleHorizon(cycle, today) : today;
   const transactions = cycle ? await getTransactionsInRange(cycle.start, spendEnd) : [];
+  const [allIncomes, accountTransactions] = await Promise.all([
+    getAllIncomes(),
+    getTransactionsInRange("2000-01-01", spendEnd),
+  ]);
+  const accountSummary = summarizeAccounts({
+    accounts,
+    incomes: allIncomes,
+    transactions: accountTransactions,
+    cycleStart: cycle?.start ?? null,
+    cycleEnd: spendEnd,
+  });
   const plan = summarizeMonthPlan({
     opening: budget.opening_balance,
     incomes,
@@ -108,6 +123,12 @@ async function Dashboard({
           Supabase SQL editor so income, envelopes, and month-to-month savings can save.
         </div>
       ) : null}
+      {schemaReady && !accountSchemaReady ? (
+        <div className="mb-4 rounded-2xl border border-warning/30 bg-warning-soft px-4 py-3 text-sm text-warning">
+          Run <code className="font-medium">supabase/migrations/0004_account_balances.sql</code> in the
+          Supabase SQL editor so each account can keep a starting balance and receive income.
+        </div>
+      ) : null}
     <DashboardView
       month={month}
       greeting={greetingForHour(hourInIndia(now))}
@@ -123,6 +144,7 @@ async function Dashboard({
       categories={categories}
       incomes={incomes}
       defaultSalary={profile.default_salary}
+      accountSummary={accountSummary}
     />
     </>
   );

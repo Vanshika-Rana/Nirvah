@@ -29,6 +29,7 @@ export const accountSchema = z.object({
   id: z.string().uuid().optional(),
   name: z.string().trim().min(1, "Enter an account name.").max(60),
   kind: z.enum(["bank", "credit_card", "cash", "other"]),
+  opening_balance: z.coerce.number().min(-10_000_000).max(10_000_000).optional(),
 });
 
 export const categorySchema = z.object({
